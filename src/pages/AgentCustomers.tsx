@@ -31,6 +31,8 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { useGetAgentCustomers } from '@/hooks/queries/useGetAgentCustomers'
 import { AddAgentDialog } from '@/components/modals/AddAgentDialog'
 import { ApiAgentCustomer } from '@/types'
+import { useUpdateCustomerStatus } from '@/hooks/mutations/useUpdateCustomerStatus'
+import { showToast } from '@/lib/toast'
 
 const AgentCustomers: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('')
@@ -43,6 +45,15 @@ const AgentCustomers: React.FC = () => {
   const itemsPerPage = 10
   
   const { data: customersData, isLoading, error } = useGetAgentCustomers()
+  
+  const updateStatusMutation = useUpdateCustomerStatus({
+    onSuccess: () => {
+      showToast.success('Agent status updated successfully')
+    },
+    onError: (error) => {
+      showToast.error(`Failed to update agent status: ${error.message}`)
+    }
+  })
 
   // Filter and search logic
   const filteredCustomers = useMemo(() => {
@@ -75,6 +86,26 @@ const AgentCustomers: React.FC = () => {
   const handleEditAgent = (agent: ApiAgentCustomer) => {
     setEditingAgent(agent)
     setIsEditAgentOpen(true)
+  }
+
+  const handleStatusToggle = (agent: ApiAgentCustomer) => {
+    const newStatus = agent.status === 'Active' ? 'Inactive' : 'Active'
+    // FIXED LOGIC: If currently Active (enabled) and want to disable → isDelete: false
+    // If currently Inactive (disabled) and want to enable → isDelete: true
+    const isDelete = agent.status === 'Active' ? false : true
+    
+    console.log('🎯 Agent toggle clicked:', { 
+      customerId: agent.id, 
+      currentStatus: agent.status, 
+      newStatus, 
+      isDelete 
+    });
+    
+    updateStatusMutation.mutate({
+      customerId: agent.id.toString(),
+      isDelete,
+      customerType: 'agent'
+    })
   }
 
   const handleCloseDialog = () => {
@@ -218,13 +249,17 @@ const AgentCustomers: React.FC = () => {
                           <Edit className="h-4 w-4 text-gray-600" />
                         </Button>
                         <div className="flex items-center">
-                          <div className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                            customer.status === 'Active' ? 'bg-blue-500' : 'bg-gray-300'
-                          }`}>
+                          <button
+                            onClick={() => handleStatusToggle(customer)}
+                            disabled={updateStatusMutation.isPending}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                              customer.status === 'Active' ? 'bg-blue-500' : 'bg-gray-300'
+                            } ${updateStatusMutation.isPending ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:opacity-80'}`}
+                          >
                             <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
                               customer.status === 'Active' ? 'translate-x-6' : 'translate-x-1'
                             }`} />
-                          </div>
+                          </button>
                         </div>
                       </div>
                     </TableCell>

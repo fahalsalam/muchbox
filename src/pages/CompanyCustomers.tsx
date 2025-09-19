@@ -30,17 +30,29 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useGetCompanyCustomers } from '@/hooks/queries/useGetCompanyCustomers'
 import { AddCompanyDialog } from '@/components/modals/AddCompanyDialog'
+import { ApiCompanyCustomer } from '@/types'
+import { useUpdateCustomerStatus } from '@/hooks/mutations/useUpdateCustomerStatus'
+import { showToast } from '@/lib/toast'
 
 const CompanyCustomers: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<'All' | 'Active' | 'Inactive'>('All')
   const [currentPage, setCurrentPage] = useState(1)
   const [isAddCompanyOpen, setIsAddCompanyOpen] = useState(false)
-  const [editingCompany, setEditingCompany] = useState<any>(null)
+  const [editingCompany, setEditingCompany] = useState<ApiCompanyCustomer | null>(null)
   const [dialogMode, setDialogMode] = useState<'add' | 'edit'>('add')
   const itemsPerPage = 10
   
   const { data: customersData, isLoading, error } = useGetCompanyCustomers()
+  
+  const updateStatusMutation = useUpdateCustomerStatus({
+    onSuccess: () => {
+      showToast.success('Company status updated successfully')
+    },
+    onError: (error) => {
+      showToast.error(`Failed to update company status: ${error.message}`)
+    }
+  })
 
   // Format price display (unused)
 
@@ -76,10 +88,30 @@ const CompanyCustomers: React.FC = () => {
     setIsAddCompanyOpen(true)
   }
 
-  const handleEditCompany = (company: any) => {
+  const handleEditCompany = (company: ApiCompanyCustomer) => {
     setDialogMode('edit')
     setEditingCompany(company)
     setIsAddCompanyOpen(true)
+  }
+
+  const handleStatusToggle = (company: ApiCompanyCustomer) => {
+    const newStatus = company.status === 'Active' ? 'Inactive' : 'Active'
+    // FIXED LOGIC: If currently Active (enabled) and want to disable → isDelete: false
+    // If currently Inactive (disabled) and want to enable → isDelete: true
+    const isDelete = company.status === 'Active' ? false : true
+    
+    console.log('🎯 Company toggle clicked:', { 
+      customerId: company.id, 
+      currentStatus: company.status, 
+      newStatus, 
+      isDelete 
+    });
+    
+    updateStatusMutation.mutate({
+      customerId: company.id.toString(),
+      isDelete,
+      customerType: 'company'
+    })
   }
 
   const handleCloseDialog = () => {
@@ -215,13 +247,17 @@ const CompanyCustomers: React.FC = () => {
                       
                       {/* Status Toggle Switch */}
                       <div className="flex items-center">
-                        <div className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                          customer.status === 'Active' ? 'bg-blue-500' : 'bg-gray-300'
-                        }`}>
+                        <button
+                          onClick={() => handleStatusToggle(customer)}
+                          disabled={updateStatusMutation.isPending}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                            customer.status === 'Active' ? 'bg-blue-500' : 'bg-gray-300'
+                          } ${updateStatusMutation.isPending ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:opacity-80'}`}
+                        >
                           <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
                             customer.status === 'Active' ? 'translate-x-6' : 'translate-x-1'
                           }`} />
-                        </div>
+                        </button>
                       </div>
                     </div>
                   </TableCell>

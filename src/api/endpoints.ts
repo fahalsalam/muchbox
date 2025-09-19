@@ -23,6 +23,9 @@ export const API_ENDPOINTS = {
   
   // Dashboard
   DASHBOARD: 'getCustomerDashboard',
+  
+  // Invoices
+  MONTHLY_INVOICE_SUMMARY: 'getMonthlyInvoiceSummary',
 } as const;
 
 // HTTP Methods
@@ -38,6 +41,7 @@ export const HTTP_METHODS = {
 export const HEADER_KEYS = {
   CUSTOMER_TYPE: 'customerType',
   CUSTOMER_ID: 'customerId',
+  FORZA_CUSTOMER_ID: 'forzaCustomerID',
   ORDER_AID: 'orderAID',
   ORDER_ID: 'orderId',
   IS_DELETE: 'isdelete',

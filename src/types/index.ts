@@ -43,6 +43,7 @@ export interface ApiIndividualCustomer {
   dietPreference: 'veg' | 'non-veg';
   meals: string; // JSON string like {"Breakfast":true,"Lunch":false,"Dinner":true}
   status: 'Active' | 'Inactive';
+  ForzaCustomerID: string | null;
 }
 
 // Customer Creation Request Types
@@ -104,6 +105,7 @@ export interface ApiCompanyCustomer {
   creditLimit: string;
   creditDays: number | null;
   status: 'Active' | 'Inactive';
+  ForzaCustomerID: string | null;
 }
 
 export interface ApiAgentCustomer {
@@ -118,6 +120,7 @@ export interface ApiAgentCustomer {
   creditLimit: string;
   creditDays: number;
   status: 'Active' | 'Inactive';
+  ForzaCustomerID: string | null;
 }
 
 export interface CompanyCustomer extends BaseCustomer {
@@ -283,6 +286,23 @@ export interface CustomerFilters {
   customerType?: CustomerType;
   status?: 'Active' | 'Inactive';
   search?: string;
+}
+
+// Invoice Types
+export interface MonthlyInvoiceSummary {
+  CustomerId: string;
+  CustomerName: string;
+  CustomerType: 'individual' | 'company' | 'agent';
+  InvoiceMonth: string;
+  InvoiceYear: number;
+  InvoiceNo: number;
+  DORefs: string | null;
+  PaymentMode: 'Credit' | 'Cash';
+  BreakfastTotal: number;
+  LunchTotal: number;
+  DinnerTotal: number;
+  TotalAmount: number;
+  PayStatus: 'Pending' | 'Paid';
 }
 
 // Kitchen Types

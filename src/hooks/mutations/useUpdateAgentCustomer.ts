@@ -16,6 +16,7 @@ interface UpdateAgentCustomerVariables {
     status: string;
   };
   customerId: string;
+  forzaCustomerID?: string;
 }
 
 export const useUpdateAgentCustomer = (
@@ -27,16 +28,23 @@ export const useUpdateAgentCustomer = (
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ data, customerId }: UpdateAgentCustomerVariables) => {
+    mutationFn: async ({ data, customerId, forzaCustomerID }: UpdateAgentCustomerVariables) => {
       // Use the direct API call with the correct format
+      const headers: Record<string, string> = {
+        'accept': 'text/plain',
+        'customerType': 'agent',
+        'customerId': customerId,
+        'Content-Type': 'application/json',
+      };
+      
+      // Add forzaCustomerID header if provided
+      if (forzaCustomerID) {
+        headers['forzaCustomerID'] = forzaCustomerID;
+      }
+      
       const response = await fetch('https://munchbox-cugmarh6fcamdpd4.canadacentral-01.azurewebsites.net/api/putCustomerMaster', {
         method: 'PUT',
-        headers: {
-          'accept': 'text/plain',
-          'customerType': 'agent',
-          'customerId': customerId,
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify(data),
       });
 

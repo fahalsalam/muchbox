@@ -18,6 +18,7 @@ import {
   CreateCustomerRequest,
   CreateCompanyCustomerRequest,
   CreateAgentCustomerRequest,
+  MonthlyInvoiceSummary,
 } from '@/types';
 
 // Authentication Services
@@ -83,18 +84,24 @@ export const customerService = {
   updateCustomer: async (
     data: Partial<CustomerFormData>,
     customerId: string,
-    customerType: CustomerType
+    customerType: CustomerType,
+    forzaCustomerID?: string
   ): Promise<ApiResponse<Customer>> => {
     try {
+      const headers: Record<string, string> = {
+        [HEADER_KEYS.CUSTOMER_TYPE]: customerType,
+        [HEADER_KEYS.CUSTOMER_ID]: customerId,
+      };
+      
+      // Add forzaCustomerID header if provided
+      if (forzaCustomerID) {
+        headers[HEADER_KEYS.FORZA_CUSTOMER_ID] = forzaCustomerID;
+      }
+      
       const response = await api.put(
         API_ENDPOINTS.UPDATE_CUSTOMER,
         data,
-        {
-          headers: {
-            [HEADER_KEYS.CUSTOMER_TYPE]: customerType,
-            [HEADER_KEYS.CUSTOMER_ID]: customerId,
-          },
-        }
+        { headers }
       );
       return response.data;
     } catch (error: any) {
@@ -109,15 +116,36 @@ export const customerService = {
     isDelete: boolean
   ): Promise<ApiResponse<void>> => {
     try {
+      console.log('🚀 Making DELETE request to:', API_ENDPOINTS.DELETE_CUSTOMER);
+      console.log('📋 Request headers:', {
+        [HEADER_KEYS.IS_DELETE]: isDelete.toString(),
+        [HEADER_KEYS.CUSTOMER_ID]: customerId,
+      });
+      
       const response = await api.delete(API_ENDPOINTS.DELETE_CUSTOMER, {
         headers: {
           [HEADER_KEYS.IS_DELETE]: isDelete.toString(),
           [HEADER_KEYS.CUSTOMER_ID]: customerId,
         },
       });
+      
+      console.log('📥 DELETE response:', response.data);
+      console.log('📊 Response status:', response.status);
+      console.log('🔍 Full response object:', response);
+      
       return response.data;
     } catch (error: any) {
-      console.error('Update customer status error:', error.response?.data || error.message);
+      console.error('❌ Update customer status error:', error.response?.data || error.message);
+      console.error('🔍 Error details:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        config: {
+          url: error.config?.url,
+          method: error.config?.method,
+          headers: error.config?.headers,
+        }
+      });
       throw error.response?.data || error;
     }
   },
@@ -125,11 +153,13 @@ export const customerService = {
   // Get individual customers
   getIndividualCustomers: async (): Promise<ApiResponse<ApiIndividualCustomer[]>> => {
     try {
+      console.log('🔍 Fetching individual customers...');
       const response = await api.get(API_ENDPOINTS.GET_CUSTOMERS, {
         params: {
           customerType: 'individual'
         }
       });
+      console.log('📥 Individual customers response:', response.data);
       return response.data;
     } catch (error: any) {
       console.error('Get individual customers error:', error.response?.data || error.message);
@@ -140,11 +170,13 @@ export const customerService = {
   // Get company customers
   getCompanyCustomers: async (): Promise<ApiResponse<ApiCompanyCustomer[]>> => {
     try {
+      console.log('🔍 Fetching company customers...');
       const response = await api.get(API_ENDPOINTS.GET_CUSTOMERS, {
         params: {
           customerType: 'company'
         }
       });
+      console.log('📥 Company customers response:', response.data);
       return response.data;
     } catch (error: any) {
       console.error('Get company customers error:', error.response?.data || error.message);
@@ -155,11 +187,13 @@ export const customerService = {
   // Get agent customers
   getAgentCustomers: async (): Promise<ApiResponse<ApiAgentCustomer[]>> => {
     try {
+      console.log('🔍 Fetching agent customers...');
       const response = await api.get(API_ENDPOINTS.GET_CUSTOMERS, {
         params: {
           customerType: 'agent'
         }
       });
+      console.log('📥 Agent customers response:', response.data);
       return response.data;
     } catch (error: any) {
       console.error('Get agent customers error:', error.response?.data || error.message);
@@ -332,6 +366,26 @@ export const dashboardService = {
       return response.data;
     } catch (error: any) {
       console.error('Get dashboard data error:', error.response?.data || error.message);
+      throw error.response?.data || error;
+    }
+  },
+};
+
+// Invoice Services
+export const invoiceService = {
+  // Get monthly invoice summary
+  getMonthlyInvoiceSummary: async (): Promise<ApiResponse<MonthlyInvoiceSummary[]>> => {
+    try {
+      console.log('🔍 Fetching monthly invoice summary...');
+      const response = await api.get(API_ENDPOINTS.MONTHLY_INVOICE_SUMMARY, {
+        headers: {
+          'accept': 'text/plain',
+        },
+      });
+      console.log('📥 Monthly invoice summary response:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('Get monthly invoice summary error:', error.response?.data || error.message);
       throw error.response?.data || error;
     }
   },

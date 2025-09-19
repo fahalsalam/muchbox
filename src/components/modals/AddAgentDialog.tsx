@@ -173,7 +173,8 @@ export function AddAgentDialog({ open, onOpenChange, agent, mode = 'add' }: AddA
       }
       updateAgentMutation.mutate({
         data: updatePayload,
-        customerId: agent.id.toString()
+        customerId: agent.id.toString(),
+        forzaCustomerID: agent.ForzaCustomerID || undefined
       })
     }
   }

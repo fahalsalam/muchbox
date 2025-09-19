@@ -123,7 +123,7 @@ export function AddCompanyDialog({ open, onOpenChange, editCompany, mode = 'add'
     },
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
     // Validate required fields
@@ -135,23 +135,84 @@ export function AddCompanyDialog({ open, onOpenChange, editCompany, mode = 'add'
       return
     }
 
-    // Prepare API payload
-    const companyData = {
-      companyName: formData.companyName,
-      contactPerson: formData.contactPerson,
-      mobile: formData.mobile,
-      address: formData.address,
-      registeredDate: format(formData.registeredDate!, 'yyyy-MM-dd'),
-      tradeLicense: formData.tradeLicense,
-      taxNumber: formData.taxNumber,
-      breakfastPrice: formData.breakfastPrice,
-      lunchPrice: formData.lunchPrice,
-      dinnerPrice: formData.dinnerPrice,
-      creditLimit: formData.creditLimit,
-      creditDays: formData.dueDays,
+    const registeredDate = format(formData.registeredDate!, 'yyyy-MM-dd')
+    const addAED = (v: string) => {
+      const num = Number(v || '0')
+      if (Number.isNaN(num)) return `AED ${v}`
+      return `AED ${num.toLocaleString('en-US')}`
     }
 
-    createCompanyMutation.mutate(companyData)
+    if (mode === 'add') {
+      const companyData = {
+        companyName: formData.companyName,
+        contactPerson: formData.contactPerson,
+        mobile: formData.mobile,
+        address: formData.address,
+        registeredDate,
+        tradeLicense: formData.tradeLicense,
+        taxNumber: formData.taxNumber,
+        breakfastPrice: formData.breakfastPrice,
+        lunchPrice: formData.lunchPrice,
+        dinnerPrice: formData.dinnerPrice,
+        creditLimit: formData.creditLimit,
+        creditDays: formData.dueDays,
+      }
+      createCompanyMutation.mutate(companyData)
+      return
+    }
+
+    if (mode === 'edit' && editCompany) {
+      try {
+        const payload = {
+          id: editCompany.id,
+          name: formData.companyName,
+          contactPerson: formData.contactPerson,
+          mobile: formData.mobile,
+          address: formData.address,
+          registeredDate,
+          tradeLicense: formData.tradeLicense,
+          taxNumber: formData.taxNumber,
+          breakfastPrice: addAED(formData.breakfastPrice),
+          lunchPrice: addAED(formData.lunchPrice),
+          dinnerPrice: addAED(formData.dinnerPrice),
+          creditLimit: addAED(formData.creditLimit),
+          creditDays: formData.dueDays,
+          status: editCompany.status || 'Active',
+          companyName: formData.companyName,
+        }
+
+        const headers: Record<string, string> = {
+          accept: 'text/plain',
+          'Content-Type': 'application/json',
+          customerType: 'company',
+          customerId: editCompany.id.toString(),
+        };
+        
+        // Add forzaCustomerID header if available
+        if (editCompany.ForzaCustomerID) {
+          headers['forzaCustomerID'] = editCompany.ForzaCustomerID;
+        }
+
+        const res = await fetch('https://munchbox-cugmarh6fcamdpd4.canadacentral-01.azurewebsites.net/api/putCustomerMaster', {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify(payload),
+        })
+
+        if (!res.ok) {
+          const text = await res.text()
+          throw new Error(text || `Request failed with status ${res.status}`)
+        }
+
+        showToast.success('Company Updated Successfully!', 'The company has been updated.')
+        await queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.CUSTOMERS, 'company'] })
+        await queryClient.refetchQueries({ queryKey: [QUERY_KEYS.CUSTOMERS, 'company'] })
+        onOpenChange(false)
+      } catch (err: any) {
+        const msg = err?.message || 'Failed to update company.'
+        showToast.error('Failed to Update Company', msg)
+      }
+    }
   }
 
 

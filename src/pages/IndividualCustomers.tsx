@@ -31,6 +31,8 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { useGetIndividualCustomers } from '@/hooks/queries/useGetIndividualCustomers'
 import { EditCustomerDialog } from '@/components/modals/EditCustomerDialog'
 import { ApiIndividualCustomer } from '@/types'
+import { useUpdateCustomerStatus } from '@/hooks/mutations/useUpdateCustomerStatus'
+import { showToast } from '@/lib/toast'
 
 const IndividualCustomers: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('')
@@ -43,6 +45,15 @@ const IndividualCustomers: React.FC = () => {
   const itemsPerPage = 10
   
   const { data: customersData, isLoading, error } = useGetIndividualCustomers()
+  
+  const updateStatusMutation = useUpdateCustomerStatus({
+    onSuccess: () => {
+      showToast.success('Customer status updated successfully')
+    },
+    onError: (error) => {
+      showToast.error(`Failed to update customer status: ${error.message}`)
+    }
+  })
 
   // Parse meals JSON string to get individual meal preferences
   const parseMeals = (mealsString: string) => {
@@ -87,6 +98,26 @@ const IndividualCustomers: React.FC = () => {
   const handleEditCustomer = (customer: ApiIndividualCustomer) => {
     setSelectedCustomer(customer)
     setIsEditCustomerOpen(true)
+  }
+
+  const handleStatusToggle = (customer: ApiIndividualCustomer) => {
+    const newStatus = customer.status === 'Active' ? 'Inactive' : 'Active'
+    // FIXED LOGIC: If currently Active (enabled) and want to disable → isDelete: false
+    // If currently Inactive (disabled) and want to enable → isDelete: true
+    const isDelete = customer.status === 'Active' ? false : true
+    
+    console.log('🎯 Toggle clicked:', { 
+      customerId: customer.id, 
+      currentStatus: customer.status, 
+      newStatus, 
+      isDelete 
+    });
+    
+    updateStatusMutation.mutate({
+      customerId: customer.id.toString(),
+      isDelete,
+      customerType: 'individual'
+    })
   }
 
   const handleAddCustomer = () => {
@@ -267,13 +298,17 @@ const IndividualCustomers: React.FC = () => {
                         
                         {/* Status Toggle Switch */}
                         <div className="flex items-center">
-                          <div className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                            customer.status === 'Active' ? 'bg-blue-500' : 'bg-gray-300'
-                          }`}>
+                          <button
+                            onClick={() => handleStatusToggle(customer)}
+                            disabled={updateStatusMutation.isPending}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                              customer.status === 'Active' ? 'bg-blue-500' : 'bg-gray-300'
+                            } ${updateStatusMutation.isPending ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:opacity-80'}`}
+                          >
                             <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
                               customer.status === 'Active' ? 'translate-x-6' : 'translate-x-1'
                             }`} />
-                          </div>
+                          </button>
                         </div>
                         
                         {/* Renew Button */}

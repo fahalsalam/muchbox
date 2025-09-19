@@ -211,7 +211,8 @@ export function EditCustomerDialog({ open, onOpenChange, customer, mode }: EditC
       updateCustomerMutation.mutate({
         data: customerData,
         customerId: customer.id.toString(),
-        customerType: 'individual'
+        customerType: 'individual',
+        forzaCustomerID: customer.ForzaCustomerID || undefined
       })
     }
   }

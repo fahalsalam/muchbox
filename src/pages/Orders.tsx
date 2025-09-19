@@ -312,8 +312,17 @@ const Orders: React.FC = () => {
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        className="p-2 h-8 w-8 border-gray-300 hover:bg-gray-50"
+                        className={`p-2 h-8 w-8 ${
+                          order.OrderStatus === 'Processed' || order.OrderStatus === 'Delivered'
+                            ? 'border-gray-200 bg-gray-50 cursor-not-allowed'
+                            : 'border-gray-300 hover:bg-gray-50'
+                        }`}
+                        disabled={order.OrderStatus === 'Processed' || order.OrderStatus === 'Delivered'}
                         onClick={() => {
+                          if (order.OrderStatus === 'Processed' || order.OrderStatus === 'Delivered') {
+                            return; // Do nothing if disabled
+                          }
+                          
                           const editOrder = {
                             customerId: String(order.CustomerId ?? ''),
                             customerName: order.CustomerName,
@@ -333,7 +342,11 @@ const Orders: React.FC = () => {
                           navigate('/add-order', { state: { editOrder, editOrderMeta } })
                         }}
                       >
-                        <Edit className="h-4 w-4 text-gray-600" />
+                        <Edit className={`h-4 w-4 ${
+                          order.OrderStatus === 'Processed' || order.OrderStatus === 'Delivered'
+                            ? 'text-gray-400'
+                            : 'text-gray-600'
+                        }`} />
                       </Button>
                       <Button 
                         variant="outline" 
@@ -347,69 +360,73 @@ const Orders: React.FC = () => {
                 </TableRow>
               ))}
             </TableBody>
+            
+            {/* Pagination Footer */}
+            {totalPages > 1 && (
+              <TableRow className="border-t-2 border-gray-200">
+                <TableCell colSpan={8} className="py-4 px-4 bg-gray-50">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm text-gray-600 font-medium">
+                      Showing {startIndex + 1} to {Math.min(endIndex, filteredOrders.length)} of {filteredOrders.length} orders
+                    </div>
+                    <Pagination>
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationPrevious 
+                            onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+                            className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                          />
+                        </PaginationItem>
+                        
+                        {[...Array(totalPages)].map((_, i) => {
+                          const page = i + 1
+                          
+                          // Show first page, last page, current page, and pages around current
+                          if (
+                            page === 1 ||
+                            page === totalPages ||
+                            (page >= currentPage - 1 && page <= currentPage + 1)
+                          ) {
+                            return (
+                              <PaginationItem key={page}>
+                                <PaginationLink
+                                  onClick={() => handlePageChange(page)}
+                                  isActive={currentPage === page}
+                                  className="cursor-pointer"
+                                >
+                                  {page}
+                                </PaginationLink>
+                              </PaginationItem>
+                            )
+                          }
+                          
+                          // Show ellipsis for gaps
+                          if (page === currentPage - 2 || page === currentPage + 2) {
+                            return (
+                              <PaginationItem key={page}>
+                                <PaginationEllipsis />
+                              </PaginationItem>
+                            )
+                          }
+                          
+                          return null
+                        })}
+                        
+                        <PaginationItem>
+                          <PaginationNext 
+                            onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+                            className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                          />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
+                  </div>
+                </TableCell>
+              </TableRow>
+            )}
           </Table>
         </div>
       </div>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-muted-foreground">
-            Page {currentPage} of {totalPages}
-          </div>
-          <Pagination>
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious 
-                  onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
-                  className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                />
-              </PaginationItem>
-              
-              {[...Array(totalPages)].map((_, i) => {
-                const page = i + 1
-                
-                // Show first page, last page, current page, and pages around current
-                if (
-                  page === 1 ||
-                  page === totalPages ||
-                  (page >= currentPage - 1 && page <= currentPage + 1)
-                ) {
-                  return (
-                    <PaginationItem key={page}>
-                      <PaginationLink
-                        onClick={() => handlePageChange(page)}
-                        isActive={currentPage === page}
-                        className="cursor-pointer"
-                      >
-                        {page}
-                      </PaginationLink>
-                    </PaginationItem>
-                  )
-                }
-                
-                // Show ellipsis for gaps
-                if (page === currentPage - 2 || page === currentPage + 2) {
-                  return (
-                    <PaginationItem key={page}>
-                      <PaginationEllipsis />
-                    </PaginationItem>
-                  )
-                }
-                
-                return null
-              })}
-              
-              <PaginationItem>
-                <PaginationNext 
-                  onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
-                  className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-        </div>
-      )}
     </div>
   )
 }

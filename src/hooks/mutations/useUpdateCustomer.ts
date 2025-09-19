@@ -6,6 +6,7 @@ interface UpdateCustomerVariables {
   data: Partial<CustomerFormData>;
   customerId: string;
   customerType: CustomerType;
+  forzaCustomerID?: string;
 }
 
 export const useUpdateCustomer = (
@@ -17,8 +18,8 @@ export const useUpdateCustomer = (
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ data, customerId, customerType }: UpdateCustomerVariables) =>
-      customerService.updateCustomer(data, customerId, customerType),
+    mutationFn: ({ data, customerId, customerType, forzaCustomerID }: UpdateCustomerVariables) =>
+      customerService.updateCustomer(data, customerId, customerType, forzaCustomerID),
     onSuccess: (_, variables) => {
       // Invalidate customers queries to refetch updated data
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CUSTOMERS });
