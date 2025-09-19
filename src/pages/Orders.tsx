@@ -97,12 +97,13 @@ const Orders: React.FC = () => {
 
     // Generate delivery note for single order
     const deliveryOrderNumber = `DEL${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}${String(new Date().getDate()).padStart(2, '0')}${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}-1`;
+    const label = order.OrderStatus === 'Processed' ? 'Kitchen' : 'Delivery'
 
     const printContent = `
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Delivery Order</title>
+        <title>${label} Order</title>
         <style>
           @page { 
             size: A4; 
@@ -304,7 +305,7 @@ const Orders: React.FC = () => {
           <div class="main-container">
             <!-- Header -->
             <div class="header">
-              <h1>Catering Delivery Order</h1>
+              <h1>Catering ${label} Order</h1>
             </div>
             
             <!-- Order Information Section -->
@@ -312,7 +313,7 @@ const Orders: React.FC = () => {
               <div class="section-title">Order Info</div>
               <div class="info-grid">
                 <div class="info-row">
-                  <span class="label">Delivery Order No</span>
+                  <span class="label">${label} Order No</span>
                   <span class="colon">:</span>
                   <span class="value">${deliveryOrderNumber}</span>
                 </div>
@@ -322,7 +323,7 @@ const Orders: React.FC = () => {
                   <span class="value">${order.OrderDate || new Date().toLocaleDateString('en-GB')}</span>
                 </div>
                 <div class="info-row">
-                  <span class="label">Delivery Time</span>
+                  <span class="label">${label} Time</span>
                   <span class="colon">:</span>
                   <span class="value">_________________</span>
                 </div>
@@ -404,10 +405,10 @@ const Orders: React.FC = () => {
             <div class="notes-section">
               <div class="notes-title">Notes</div>
               <ul class="notes-list">
-                <li>Please Verify Quantity Upon Delivery Time</li>
+                <li>Please Verify Quantity Upon ${label} Time</li>
                 <li>Any discrepancy should be reported immediately</li>
                 <li>Customer Type: ${order.CustomerType}</li>
-                <li>Delivery Date: ${order.OrderDate || new Date().toLocaleDateString('en-GB')}</li>
+                <li>${label} Date: ${order.OrderDate || new Date().toLocaleDateString('en-GB')}</li>
               </ul>
             </div>
           </div>
@@ -462,7 +463,7 @@ const Orders: React.FC = () => {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>All Delivery Orders</title>
+        <title>All Orders</title>
         <style>
           @page { 
             size: A4; 
@@ -667,13 +668,14 @@ const Orders: React.FC = () => {
       <body>
         ${deliveryOrders.map((order, index) => {
           const deliveryOrderNumber = `DEL${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}${String(new Date().getDate()).padStart(2, '0')}${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}-${index + 1}`;
+          const label = order.OrderStatus === 'Processed' ? 'Kitchen' : 'Delivery'
           
           return `
             <div class="delivery-order">
               <div class="main-container">
                 <!-- Header -->
                 <div class="header">
-                  <h1>Catering Delivery Order</h1>
+                  <h1>Catering ${label} Order</h1>
                 </div>
                 
                 <!-- Order Information Section -->
@@ -681,7 +683,7 @@ const Orders: React.FC = () => {
                   <div class="section-title">Order Info</div>
                   <div class="info-grid">
                     <div class="info-row">
-                      <span class="label">Delivery Order No</span>
+                      <span class="label">${label} Order No</span>
                       <span class="colon">:</span>
                       <span class="value">${deliveryOrderNumber}</span>
                     </div>
@@ -691,7 +693,7 @@ const Orders: React.FC = () => {
                       <span class="value">${order.OrderDate || new Date().toLocaleDateString('en-GB')}</span>
                     </div>
                     <div class="info-row">
-                      <span class="label">Delivery Time</span>
+                      <span class="label">${label} Time</span>
                       <span class="colon">:</span>
                       <span class="value">_________________</span>
                     </div>
@@ -758,7 +760,7 @@ const Orders: React.FC = () => {
                 <!-- Signatures Section -->
                 <div class="signature-section">
                   <div class="signature-row">
-                    <span class="signature-label">Delivered By (Signature & Name)</span>
+                    <span class="signature-label">${label} By (Signature & Name)</span>
                     <span class="colon">:</span>
                     <span class="signature-line"></span>
                   </div>
@@ -773,10 +775,10 @@ const Orders: React.FC = () => {
                 <div class="notes-section">
                   <div class="notes-title">Notes</div>
                   <ul class="notes-list">
-                    <li>Please Verify Quantity Upon Delivery Time</li>
+                    <li>Please Verify Quantity Upon ${label} Time</li>
                     <li>Any discrepancy should be reported immediately</li>
                     <li>Customer Type: ${order.CustomerType}</li>
-                    <li>Delivery Date: ${order.OrderDate || new Date().toLocaleDateString('en-GB')}</li>
+                    <li>${label} Date: ${order.OrderDate || new Date().toLocaleDateString('en-GB')}</li>
                   </ul>
                 </div>
               </div>
