@@ -30,6 +30,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useGetIndividualCustomers } from '@/hooks/queries/useGetIndividualCustomers'
 import { EditCustomerDialog } from '@/components/modals/EditCustomerDialog'
+import { AddCustomerDialog } from '@/components/modals/AddCustomerDialog'
 import { ApiIndividualCustomer } from '@/types'
 import { useUpdateCustomerStatus } from '@/hooks/mutations/useUpdateCustomerStatus'
 import { showToast } from '@/lib/toast'
@@ -76,7 +77,8 @@ const IndividualCustomers: React.FC = () => {
     return customersData.data.filter(customer => {
       const matchesSearch = customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            customer.mobile.includes(searchTerm) ||
-                           customer.address.toLowerCase().includes(searchTerm.toLowerCase())
+                           customer.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           customer.CustomerCode?.toLowerCase().includes(searchTerm.toLowerCase())
       
       const matchesStatus = statusFilter === 'All' || customer.status === statusFilter
       const matchesDiet = dietFilter === 'All' || customer.dietPreference === dietFilter
@@ -239,6 +241,7 @@ const IndividualCustomers: React.FC = () => {
             <TableHeader className="sticky top-0 bg-gray-50 z-10">
               <TableRow className="hover:bg-gray-50">
                 <TableHead className="font-medium text-xs text-gray-500 uppercase tracking-wide py-3 px-4 w-[80px]">S.NO</TableHead>
+                <TableHead className="font-medium text-xs text-gray-500 uppercase tracking-wide py-3 px-4 w-[100px]">CUSTOMER CODE</TableHead>
                 <TableHead className="font-medium text-xs text-gray-500 uppercase tracking-wide py-3 px-4 w-[200px]">NAME</TableHead>
                 <TableHead className="font-medium text-xs text-gray-500 uppercase tracking-wide py-3 px-4 w-[140px]">MOBILE NO</TableHead>
                 <TableHead className="font-medium text-xs text-gray-500 uppercase tracking-wide py-3 px-4 w-[120px]">JOINED DATE</TableHead>
@@ -260,6 +263,9 @@ const IndividualCustomers: React.FC = () => {
                   <TableRow key={customer.id} className="hover:bg-gray-50 border-b border-gray-100">
                     <TableCell className="py-4 px-4 w-[80px]">
                       <span className="font-medium text-gray-900 text-sm">{startIndex + index + 1}</span>
+                    </TableCell>
+                    <TableCell className="py-4 px-4 w-[100px]">
+                      <span className="font-medium text-blue-600 text-sm font-mono">{customer.CustomerCode || 'N/A'}</span>
                     </TableCell>
                     <TableCell className="py-4 px-4 w-[200px]">
                       <span className="font-medium text-gray-900 text-sm">{customer.name}</span>
@@ -390,11 +396,9 @@ const IndividualCustomers: React.FC = () => {
       )}
 
       {/* Add Customer Dialog */}
-      <EditCustomerDialog 
+      <AddCustomerDialog 
         open={isAddCustomerOpen} 
         onOpenChange={setIsAddCustomerOpen}
-        customer={null}
-        mode="add"
       />
 
       {/* Edit Customer Dialog */}

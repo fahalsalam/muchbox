@@ -5,8 +5,10 @@ import { useQueryClient } from '@tanstack/react-query'
 import { CalendarIcon } from 'lucide-react'
 import { format } from 'date-fns'
 import { useCreateCompanyCustomer } from '@/hooks/mutations/useCreateCompanyCustomer'
+import { useGetCompanyCustomers } from '@/hooks/queries/useGetCompanyCustomers'
 import { showToast } from '@/lib/toast'
 import { ApiCompanyCustomer, QUERY_KEYS } from '@/types'
+import { generateCustomerCode } from '@/lib/customerCode'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -49,10 +51,15 @@ interface CompanyFormData {
   breakfastPrice: string
   lunchPrice: string
   dinnerPrice: string
+  customerCode: string
 }
 
 export function AddCompanyDialog({ open, onOpenChange, editCompany, mode = 'add' }: AddCompanyDialogProps) {
   const queryClient = useQueryClient()
+  
+  // Fetch existing companies to generate next customer code
+  const { data: companiesData } = useGetCompanyCustomers()
+  
   const [formData, setFormData] = useState<CompanyFormData>({
     companyName: '',
     contactPerson: '',
@@ -67,6 +74,7 @@ export function AddCompanyDialog({ open, onOpenChange, editCompany, mode = 'add'
     breakfastPrice: '',
     lunchPrice: '',
     dinnerPrice: '',
+    customerCode: '',
   })
 
   // Populate form data when editing
@@ -86,7 +94,19 @@ export function AddCompanyDialog({ open, onOpenChange, editCompany, mode = 'add'
         breakfastPrice: editCompany.breakfastPrice?.replace('AED ', '') || '',
         lunchPrice: editCompany.lunchPrice?.replace('AED ', '') || '',
         dinnerPrice: editCompany.dinnerPrice?.replace('AED ', '') || '',
+        customerCode: editCompany.CustomerCode || '',
       })
+    } else if (mode === 'add' && open && companiesData?.data) {
+      // Generate customer code for add mode
+      const existingCodes = companiesData.data
+        .map(company => company.CustomerCode)
+        .filter((code): code is string => code != null && code.trim() !== '')
+      const customerCode = generateCustomerCode('company', existingCodes)
+      setFormData(prev => ({ ...prev, customerCode }))
+    } else if (mode === 'add' && open) {
+      // Fallback: generate first customer code if no data available
+      const customerCode = generateCustomerCode('company')
+      setFormData(prev => ({ ...prev, customerCode }))
     } else {
       // Reset form for add mode
       setFormData({
@@ -103,9 +123,10 @@ export function AddCompanyDialog({ open, onOpenChange, editCompany, mode = 'add'
         breakfastPrice: '',
         lunchPrice: '',
         dinnerPrice: '',
+        customerCode: '',
       })
     }
-  }, [mode, editCompany, open])
+  }, [mode, editCompany, open, companiesData?.data])
 
   const createCompanyMutation = useCreateCompanyCustomer({
     onSuccess: async () => {
@@ -130,7 +151,8 @@ export function AddCompanyDialog({ open, onOpenChange, editCompany, mode = 'add'
     if (!formData.companyName || !formData.contactPerson || !formData.mobile || 
         !formData.address || !formData.registeredDate || !formData.tradeLicense || 
         !formData.taxNumber || !formData.creditLimit || !formData.dueDays ||
-        !formData.breakfastPrice || !formData.lunchPrice || !formData.dinnerPrice) {
+        !formData.breakfastPrice || !formData.lunchPrice || !formData.dinnerPrice ||
+        !formData.customerCode) {
       showToast.error('Validation Error', 'Please fill in all required fields.')
       return
     }
@@ -156,6 +178,7 @@ export function AddCompanyDialog({ open, onOpenChange, editCompany, mode = 'add'
         dinnerPrice: formData.dinnerPrice,
         creditLimit: formData.creditLimit,
         creditDays: formData.dueDays,
+        customerCode: formData.customerCode,
       }
       createCompanyMutation.mutate(companyData)
       return
@@ -226,6 +249,22 @@ export function AddCompanyDialog({ open, onOpenChange, editCompany, mode = 'add'
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Customer Code */}
+          <div className="space-y-2">
+            <Label htmlFor="customerCode" className="text-sm font-medium">
+              Customer Code *
+            </Label>
+            <Input
+              id="customerCode"
+              value={formData.customerCode}
+              placeholder="Auto-generated customer code"
+              required
+              readOnly
+              className="bg-gray-100 font-mono cursor-not-allowed"
+            />
+            <p className="text-xs text-gray-500">This code is auto-generated and cannot be modified</p>
+          </div>
+
           {/* Company Information Section */}
           <div className="space-y-4">
             <div className="flex items-center gap-2">

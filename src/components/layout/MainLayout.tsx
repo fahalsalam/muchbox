@@ -36,6 +36,7 @@ import { cn } from '@/lib/utils'
 import { useGetOrders } from '@/hooks/queries/useGetOrders'
 import { useMemo } from 'react'
 import ModeToggle from '@/components/ModeToggle'
+import { SettingsModal } from '@/components/modals/SettingsModal'
 
 interface MainLayoutProps {
   children: React.ReactNode
@@ -104,6 +105,7 @@ const navigationItems: NavItem[] = [
 const MainLayout: React.FC<MainLayoutProps> = ({ children, onLogout }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [expandedItems, setExpandedItems] = useState<string[]>([])
+  const [settingsOpen, setSettingsOpen] = useState(false)
   // Removed unused local filters (managed in pages)
   const location = useLocation()
 
@@ -229,7 +231,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, onLogout }) => {
             <div className="text-xs text-muted-foreground">
               MunchBox v1.0
             </div>
-            <Button variant="ghost" size="icon">
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={() => setSettingsOpen(true)}
+              className="hover:bg-accent hover:text-accent-foreground"
+            >
               <Settings className="h-4 w-4" />
             </Button>
           </div>
@@ -327,6 +334,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, onLogout }) => {
           </div>
         </main>
       </div>
+
+      {/* Settings Modal */}
+      <SettingsModal 
+        open={settingsOpen} 
+        onOpenChange={setSettingsOpen} 
+      />
     </div>
   )
 }

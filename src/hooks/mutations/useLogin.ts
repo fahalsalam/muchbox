@@ -1,24 +1,36 @@
 import { useMutation, UseMutationOptions } from '@tanstack/react-query';
 import { authService } from '@/api/services';
-import { LoginCredentials, ApiResponse } from '@/types';
+import { LoginCredentials, ApiResponse, LoginResponse, UserRole } from '@/types';
+import { useUser } from '@/contexts/UserContext';
 
 export const useLogin = (
   options?: Omit<
     UseMutationOptions<
-      ApiResponse<{ token: string; user: any }>,
+      ApiResponse<LoginResponse>,
       Error,
       LoginCredentials
     >,
     'mutationFn'
   >
 ) => {
+  const { setUser } = useUser();
+  
   return useMutation({
     mutationFn: authService.login,
     onSuccess: (data) => {
-      // Store token and login state
-      if (data.data.token) {
-        localStorage.setItem('authToken', data.data.token);
-        localStorage.setItem('isLoggedIn', 'true');
+      // User data is already stored in localStorage by authService.login
+      // Just update the UserContext for immediate access
+      if (data.data) {
+        const userData = {
+          userID: data.data.userID,
+          userName: data.data.userName,
+          role: data.data.role
+        };
+        
+        // Set user context for immediate access (localStorage already updated by authService)
+        setUser(userData.userID, userData.userName, userData.role as UserRole);
+        
+        console.log('👤 User context updated after login:', userData);
       }
     },
     ...options,

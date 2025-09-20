@@ -6,6 +6,7 @@ import { format } from 'date-fns'
 import { useGetIndividualCustomers } from '@/hooks/queries/useGetIndividualCustomers'
 import { showToast } from '@/lib/toast'
 import { ApiIndividualCustomer } from '@/types'
+import { preventScrollOnWheel } from '@/lib/inputUtils'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -285,6 +286,7 @@ export function ModernOrderForm({ onAddOrder, onDateChange, orderForDate }: Mode
                 min="0"
                 value={quantities.breakfast}
                 onChange={(e) => handleQuantityChange('breakfast', e.target.value)}
+                onWheel={preventScrollOnWheel}
                 className="h-12 text-center text-lg font-semibold"
                 placeholder="0"
               />
@@ -305,6 +307,7 @@ export function ModernOrderForm({ onAddOrder, onDateChange, orderForDate }: Mode
                 min="0"
                 value={quantities.lunch}
                 onChange={(e) => handleQuantityChange('lunch', e.target.value)}
+                onWheel={preventScrollOnWheel}
                 className="h-12 text-center text-lg font-semibold"
                 placeholder="0"
               />
@@ -325,6 +328,7 @@ export function ModernOrderForm({ onAddOrder, onDateChange, orderForDate }: Mode
                 min="0"
                 value={quantities.dinner}
                 onChange={(e) => handleQuantityChange('dinner', e.target.value)}
+                onWheel={preventScrollOnWheel}
                 className="h-12 text-center text-lg font-semibold"
                 placeholder="0"
               />

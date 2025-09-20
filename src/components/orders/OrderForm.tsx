@@ -6,6 +6,7 @@ import { format } from 'date-fns'
 import { useGetIndividualCustomers } from '@/hooks/queries/useGetIndividualCustomers'
 import { showToast } from '@/lib/toast'
 import { ApiIndividualCustomer } from '@/types'
+import { preventScrollOnWheel } from '@/lib/inputUtils'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -245,6 +246,7 @@ export function OrderForm({ onAddOrder, onDateChange, orderForDate }: OrderFormP
                 min="0"
                 value={quantities.breakfast}
                 onChange={(e) => handleQuantityChange('breakfast', e.target.value)}
+                onWheel={preventScrollOnWheel}
                 className="text-center"
                 placeholder="0"
               />
@@ -259,6 +261,7 @@ export function OrderForm({ onAddOrder, onDateChange, orderForDate }: OrderFormP
                 min="0"
                 value={quantities.lunch}
                 onChange={(e) => handleQuantityChange('lunch', e.target.value)}
+                onWheel={preventScrollOnWheel}
                 className="text-center"
                 placeholder="0"
               />
@@ -273,6 +276,7 @@ export function OrderForm({ onAddOrder, onDateChange, orderForDate }: OrderFormP
                 min="0"
                 value={quantities.dinner}
                 onChange={(e) => handleQuantityChange('dinner', e.target.value)}
+                onWheel={preventScrollOnWheel}
                 className="text-center"
                 placeholder="0"
               />

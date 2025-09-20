@@ -1,11 +1,14 @@
 "use client"
 
-import { useEffect, useRef, useState } from 'react'
-import { CalendarIcon, Plus, Search, X, User, Clock } from 'lucide-react'
+import { useEffect, useRef, useState, useMemo } from 'react'
+import { CalendarIcon, Plus, Search, X, User, Clock, AlertCircle, Shield, UserCheck, Lock } from 'lucide-react'
 import { format } from 'date-fns'
 import { useGetIndividualCustomers } from '@/hooks/queries/useGetIndividualCustomers'
 import { useGetCompanyCustomers } from '@/hooks/queries/useGetCompanyCustomers'
 import { useGetAgentCustomers } from '@/hooks/queries/useGetAgentCustomers'
+import { useUser } from '@/contexts/UserContext'
+import { useSettings } from '@/hooks/useSettings'
+import { getOrderCreationLogic } from '@/lib/orderLogic'
 import { showToast } from '@/lib/toast'
 import { ApiIndividualCustomer } from '@/types'
 
@@ -62,17 +65,132 @@ export function CompactOrderForm({ onAddOrder, onDateChange, orderForDate, editi
   })
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false)
   const [showDatePicker, setShowDatePicker] = useState(false)
+  const [currentTime, setCurrentTime] = useState(new Date()) // Live time state
   const searchInputRef = useRef<HTMLInputElement | null>(null)
 
   const { data: indivData, isLoading: indivLoading } = useGetIndividualCustomers()
   const { data: companyData, isLoading: companyLoading } = useGetCompanyCustomers()
   const { data: agentData, isLoading: agentLoading } = useGetAgentCustomers()
+  
+  // Order creation logic hooks
+  const { userRole, userName, isAdmin, isPrivileged } = useUser()
+  const { settings, isLoading: settingsLoading } = useSettings()
+  
+  // Debug logging
+  useEffect(() => {
+    console.log('🔍 CompactOrderForm Debug:', {
+      userRole,
+      userName,
+      isAdmin,
+      isPrivileged,
+      settings,
+      settingsLoading,
+      localStorageUserInfo: localStorage.getItem('userInfo'),
+      localStorageSettings: localStorage.getItem('munchbox-settings'),
+      isLoggedIn: localStorage.getItem('isLoggedIn')
+    })
+  }, [userRole, userName, isAdmin, isPrivileged, settings, settingsLoading])
+
+  // Emergency localStorage check - force reload if data exists but context is null
+  useEffect(() => {
+    const storedUserInfo = localStorage.getItem('userInfo');
+    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+    
+    console.log('🔍 Emergency Check:', {
+      storedUserInfo,
+      isLoggedIn,
+      currentUserRole: userRole
+    });
+    
+    if (isLoggedIn && storedUserInfo && !userRole) {
+      console.log('🚨 EMERGENCY: Found user data in localStorage but context is null!');
+      console.log('🚨 Stored userInfo:', storedUserInfo);
+      console.log('🚨 Current userRole:', userRole);
+      
+      // Try to manually parse and set the user data
+      try {
+        const userData = JSON.parse(storedUserInfo);
+        console.log('🚨 Parsed userData:', userData);
+        
+        // Force reload the page to reinitialize context
+        console.log('🚨 Reloading page to fix context...');
+        window.location.reload();
+      } catch (error) {
+        console.error('🚨 Error parsing userInfo:', error);
+      }
+    }
+  }, [userRole])
+  
 
   const customersLoading =
     (customerType === 'individual' && indivLoading) ||
     (customerType === 'company' && companyLoading) ||
     (customerType === 'agent' && agentLoading) ||
     false
+
+  // Live timer - update every second
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date())
+    }, 1000) // Update every second
+
+    return () => clearInterval(timer) // Cleanup on unmount
+  }, [])
+
+  // Calculate order creation logic
+  const orderLogic = useMemo(() => {
+    // Show loading state only if we're actually loading
+    if (settingsLoading) {
+      return {
+        orderDate: new Date(),
+        permissions: { canPlaceOrder: false, canEditOrderDate: false, reason: 'Loading settings...' },
+        isInMorningWindow: false,
+        explanation: 'Loading settings...'
+      }
+    }
+    
+    // If userRole is null but not loading, show a different message
+    if (!userRole) {
+      return {
+        orderDate: new Date(),
+        permissions: { canPlaceOrder: false, canEditOrderDate: false, reason: 'Please login to continue' },
+        isInMorningWindow: false,
+        explanation: 'Please login to continue'
+      }
+    }
+    
+    // If settings are not available, use defaults
+    if (!settings) {
+      const defaultSettings = { 
+        dayCutOffTime: '14:33',
+        nightCutOffTime: '22:00',
+        morningWindowEnd: '14:33'
+      }
+      const logic = getOrderCreationLogic(userRole, defaultSettings, currentTime)
+      return {
+        ...logic,
+        explanation: getOrderExplanation(defaultSettings, logic.isInMorningWindow)
+      }
+    }
+    
+    // Normal flow with userRole and settings
+    const logic = getOrderCreationLogic(userRole, settings, currentTime)
+    return {
+      ...logic,
+      explanation: getOrderExplanation(settings, logic.isInMorningWindow)
+    }
+  }, [userRole, settings, settingsLoading, currentTime]) // Add currentTime dependency
+
+  // Helper function to generate explanation text
+  function getOrderExplanation(settings: any, isInMorningWindow: boolean) {
+    const morningTime = settings.morningWindowEnd || '14:30'
+    const formattedTime = format(new Date(`2000-01-01T${morningTime}:00`), 'h:mm a')
+    if (isInMorningWindow) {
+      return `Orders placed before ${formattedTime} are delivered today.`
+    } else {
+      return `Orders placed after ${formattedTime} are delivered tomorrow.`
+    }
+  }
 
   const customersData =
     customerType === 'individual'
@@ -109,6 +227,11 @@ export function CompactOrderForm({ onAddOrder, onDateChange, orderForDate, editi
   const handleAddOrder = () => {
     if (!selectedCustomer) {
       showToast.error('Please select a customer first', 'Choose a customer to continue')
+      return
+    }
+
+    if (!orderLogic.permissions.canPlaceOrder) {
+      showToast.error('Orders Blocked', orderLogic.permissions.reason || 'Orders are currently not allowed')
       return
     }
 
@@ -226,10 +349,18 @@ export function CompactOrderForm({ onAddOrder, onDateChange, orderForDate, editi
             <div className="flex items-center gap-2">
               <CalendarIcon className="h-4 w-4 text-gray-500" />
               <span className="font-medium">Order For:</span>
-              <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
+              <Popover open={showDatePicker && orderLogic.permissions.canEditOrderDate} onOpenChange={setShowDatePicker}>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-8">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="h-8"
+                    disabled={!orderLogic.permissions.canEditOrderDate}
+                  >
                     {format(orderForDate, 'dd/MM/yyyy')}
+                    {!orderLogic.permissions.canEditOrderDate && (
+                      <Lock className="ml-1 h-3 w-3 text-gray-400" />
+                    )}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="end">
@@ -254,6 +385,69 @@ export function CompactOrderForm({ onAddOrder, onDateChange, orderForDate, editi
       
       <CardContent className="flex-1 overflow-y-auto space-y-4">
         
+        {/* Order Creation Logic Indicators */}
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+          <div className="space-y-3">
+            {/* User Role & Current Time */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {isAdmin && <Shield className="h-4 w-4 text-purple-600" />}
+                {isPrivileged && <UserCheck className="h-4 w-4 text-blue-600" />}
+                {!isAdmin && !isPrivileged && <User className="h-4 w-4 text-gray-600" />}
+                <span className="text-sm font-medium">
+                  {userName || 'Loading...'} ({userRole || 'Loading...'})
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-gray-600">
+                <Clock className="h-3 w-3 animate-pulse text-blue-500" />
+                <span className="font-mono">{format(currentTime, 'h:mm a')}</span>
+              </div>
+            </div>
+
+            {/* Cut-off Times */}
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div className="flex items-center justify-between bg-white/50 dark:bg-gray-800/50 rounded px-2 py-1">
+                <span className="text-gray-600">Morning Window:</span>
+                <span className="font-mono font-medium text-blue-700">
+                  {settings.morningWindowEnd ? format(new Date(`2000-01-01T${settings.morningWindowEnd}:00`), 'h:mm a') : '2:30 PM'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between bg-white/50 dark:bg-gray-800/50 rounded px-2 py-1">
+                <span className="text-gray-600">Night Cut-off:</span>
+                <span className="font-mono font-medium text-red-700">
+                  {settings.nightCutOffTime ? format(new Date(`2000-01-01T${settings.nightCutOffTime}:00`), 'h:mm a') : '10:00 PM'}
+                </span>
+              </div>
+            </div>
+
+            {/* Order Permissions & Explanation */}
+            <div className="space-y-2">
+              {!orderLogic.permissions.canPlaceOrder ? (
+                <div className="flex items-center gap-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-sm">
+                  <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
+                  <span className="text-red-700 dark:text-red-300">{orderLogic.permissions.reason}</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 p-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded text-sm">
+                  <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0"></div>
+                  <span className="text-green-700 dark:text-green-300">{orderLogic.explanation}</span>
+                </div>
+              )}
+              
+              {orderLogic.permissions.canEditOrderDate ? (
+                <div className="flex items-center gap-2 text-xs text-blue-600">
+                  <CalendarIcon className="h-3 w-3" />
+                  <span>Delivery date is editable</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 text-xs text-gray-500">
+                  <Lock className="h-3 w-3" />
+                  <span>Delivery date is locked</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
 
         {/* Customer Type */}
         <div className="space-y-2">
@@ -531,11 +725,11 @@ export function CompactOrderForm({ onAddOrder, onDateChange, orderForDate, editi
           
           <Button
             onClick={handleAddOrder}
-            disabled={!selectedCustomer || totalQuantity === 0}
+            disabled={!selectedCustomer || totalQuantity === 0 || !orderLogic.permissions.canPlaceOrder}
             className="w-full h-11 text-sm font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Plus className="mr-2 h-4 w-4" />
-            Add to Cart
+            {!orderLogic.permissions.canPlaceOrder ? 'Orders Blocked' : 'Add to Cart'}
           </Button>
         </div>
       </CardContent>

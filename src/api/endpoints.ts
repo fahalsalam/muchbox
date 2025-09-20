@@ -33,6 +33,11 @@ export const API_ENDPOINTS = {
   
   // Delivery Print
   GET_DELIVERY_PRINT_DATA: 'DQ/getDeliveryPrintData',
+
+  // Settings
+  GET_SETTINGS: 'getSettings',
+  UPDATE_SETTINGS: 'updateSettings',
+  POST_SETTINGS: 'DQ/postSettings',
 } as const;
 
 // HTTP Methods

@@ -1,15 +1,19 @@
 "use client"
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { CalendarIcon } from 'lucide-react'
 import { format } from 'date-fns'
 import { useCreateIndividualCustomer } from '@/hooks/mutations/useCreateIndividualCustomer'
+import { useGetIndividualCustomers } from '@/hooks/queries/useGetIndividualCustomers'
 import { showToast } from '@/lib/toast'
+import { generateCustomerCode } from '@/lib/customerCode'
+import { preventScrollOnWheel } from '@/lib/inputUtils'
 
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -50,6 +54,7 @@ interface CustomerFormData {
     dinner: boolean
   }
   dietPreference: 'veg' | 'non-veg' | ''
+  customerCode: string
 }
 
 export function AddCustomerDialog({ open, onOpenChange }: AddCustomerDialogProps) {
@@ -66,7 +71,29 @@ export function AddCustomerDialog({ open, onOpenChange }: AddCustomerDialogProps
       dinner: false,
     },
     dietPreference: '',
+    customerCode: '',
   })
+
+  // Fetch existing customers to generate next customer code
+  const { data: customersData } = useGetIndividualCustomers()
+
+  // Generate customer code when dialog opens
+  useEffect(() => {
+    if (open && customersData?.data) {
+      // Extract existing customer codes
+      const existingCodes = customersData.data
+        .map(customer => customer.CustomerCode)
+        .filter((code): code is string => code != null && code.trim() !== '')
+      
+      // Generate next customer code
+      const customerCode = generateCustomerCode('individual', existingCodes)
+      setFormData(prev => ({ ...prev, customerCode }))
+    } else if (open) {
+      // Fallback: generate first customer code if no data available
+      const customerCode = generateCustomerCode('individual')
+      setFormData(prev => ({ ...prev, customerCode }))
+    }
+  }, [open, customersData?.data])
 
   const createCustomerMutation = useCreateIndividualCustomer({
     onSuccess: () => {
@@ -74,8 +101,8 @@ export function AddCustomerDialog({ open, onOpenChange }: AddCustomerDialogProps
         'Customer Added Successfully!',
         'The new customer has been added to your system.'
       )
-      // Reset form
-      setFormData({
+      // Reset form and regenerate customer code
+      const resetFormData: CustomerFormData = {
         fullName: '',
         mobile: '',
         address: '',
@@ -87,8 +114,10 @@ export function AddCustomerDialog({ open, onOpenChange }: AddCustomerDialogProps
           lunch: false,
           dinner: false,
         },
-        dietPreference: '',
-      })
+        dietPreference: '' as 'veg' | 'non-veg' | '',
+        customerCode: '',
+      }
+      setFormData(resetFormData)
       onOpenChange(false)
     },
     onError: (error) => {
@@ -103,7 +132,7 @@ export function AddCustomerDialog({ open, onOpenChange }: AddCustomerDialogProps
     // Validate required fields
     if (!formData.fullName || !formData.mobile || !formData.address || 
         !formData.joinedDate || !formData.price || !formData.paymentMode || 
-        !formData.dietPreference) {
+        !formData.dietPreference || !formData.customerCode) {
       showToast.error('Validation Error', 'Please fill in all required fields.')
       return
     }
@@ -128,6 +157,7 @@ export function AddCustomerDialog({ open, onOpenChange }: AddCustomerDialogProps
         lunch: formData.meals.lunch,
         dinner: formData.meals.dinner,
       },
+      customerCode: formData.customerCode,
     }
 
     createCustomerMutation.mutate(customerData)
@@ -145,14 +175,33 @@ export function AddCustomerDialog({ open, onOpenChange }: AddCustomerDialogProps
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[95vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold">
             Add New Customer
           </DialogTitle>
+          <DialogDescription>
+            Create a new individual customer with auto-generated customer code.
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Customer Code */}
+          <div className="space-y-2">
+            <Label htmlFor="customerCode" className="text-sm font-medium">
+              Customer Code *
+            </Label>
+            <Input
+              id="customerCode"
+              value={formData.customerCode}
+              placeholder="Auto-generated customer code"
+              required
+              readOnly
+              className="bg-gray-100 font-mono cursor-not-allowed"
+            />
+            <p className="text-xs text-gray-500">This code is auto-generated and cannot be modified</p>
+          </div>
+
           {/* Full Name and Mobile Number */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -236,6 +285,7 @@ export function AddCustomerDialog({ open, onOpenChange }: AddCustomerDialogProps
                 id="price"
                 value={formData.price}
                 onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
+                onWheel={preventScrollOnWheel}
                 placeholder="Enter price"
                 type="number"
                 required

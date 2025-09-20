@@ -20,13 +20,54 @@ import {
   CreateAgentCustomerRequest,
   MonthlyInvoiceResponse,
   PostInvoiceRequest,
+  SettingsResponse,
+  UpdateSettingsRequest,
+  PostSettingRequest,
+  LoginResponse,
+  SettingItem,
 } from '@/types';
 
 // Authentication Services
 export const authService = {
-  login: async (credentials: LoginCredentials): Promise<ApiResponse<{ token: string; user: any }>> => {
+  login: async (credentials: LoginCredentials): Promise<ApiResponse<LoginResponse>> => {
     try {
+      console.log('🔍 Attempting login...', { username: credentials.username });
       const response = await api.post(API_ENDPOINTS.LOGIN, credentials);
+      console.log('📥 Login response:', response.data);
+      
+      // Store user data in localStorage immediately after login
+      if (response.data?.data) {
+        const userData = response.data.data;
+        console.log('💾 Storing user data from login response:', userData);
+        
+        // Store user info
+        const userInfo = {
+          userID: userData.userID,
+          userName: userData.userName,
+          role: userData.role
+        };
+        
+        localStorage.setItem('userInfo', JSON.stringify(userInfo));
+        localStorage.setItem('isLoggedIn', 'true');
+        console.log('✅ User data stored successfully:', userInfo);
+        
+        // Store settings if available
+        if (userData.settings) {
+          const settings = userData.settings;
+          console.log('💾 Storing settings from login response:', settings);
+          
+          // Convert settings array to our expected format
+          const settingsData = {
+            dayCutOffTime: settings.find((s: SettingItem) => s.settingKey === 'DayCutOffTime')?.settingValue || '14:30',
+            nightCutOffTime: settings.find((s: SettingItem) => s.settingKey === 'NightCutOffTime')?.settingValue || '22:00',
+            morningWindowEnd: settings.find((s: SettingItem) => s.settingKey === 'DayCutOffTime')?.settingValue || '14:30' // DayCutOffTime = Morning Window End
+          };
+          
+          localStorage.setItem('munchbox-settings', JSON.stringify(settingsData));
+          console.log('✅ Settings stored successfully:', settingsData);
+        }
+      }
+      
       return response.data;
     } catch (error: any) {
       console.error('Login error:', error.response?.data || error.message);
@@ -205,14 +246,16 @@ export const customerService = {
   // Create individual customer
   createIndividualCustomer: async (customerData: CreateCustomerRequest): Promise<ApiResponse<any>> => {
     try {
+      console.log('🔄 Creating individual customer with data:', customerData);
       const response = await api.post(API_ENDPOINTS.CUSTOMER_MASTER, customerData, {
         headers: {
           [HEADER_KEYS.CUSTOMER_TYPE]: 'individual'
         }
       });
+      console.log('✅ Individual customer created successfully:', response.data);
       return response.data;
     } catch (error: any) {
-      console.error('Create customer error:', error.response?.data || error.message);
+      console.error('❌ Create individual customer error:', error.response?.data || error.message);
       throw error.response?.data || error;
     }
   },
@@ -220,14 +263,16 @@ export const customerService = {
   // Create company customer
   createCompanyCustomer: async (customerData: CreateCompanyCustomerRequest): Promise<ApiResponse<any>> => {
     try {
+      console.log('🔄 Creating company customer with data:', customerData);
       const response = await api.post(API_ENDPOINTS.CUSTOMER_MASTER, customerData, {
         headers: {
           [HEADER_KEYS.CUSTOMER_TYPE]: 'company'
         }
       });
+      console.log('✅ Company customer created successfully:', response.data);
       return response.data;
     } catch (error: any) {
-      console.error('Create company customer error:', error.response?.data || error.message);
+      console.error('❌ Create company customer error:', error.response?.data || error.message);
       throw error.response?.data || error;
     }
   },
@@ -235,14 +280,16 @@ export const customerService = {
   // Create agent customer
   createAgentCustomer: async (customerData: CreateAgentCustomerRequest): Promise<ApiResponse<any>> => {
     try {
+      console.log('🔄 Creating agent customer with data:', customerData);
       const response = await api.post(API_ENDPOINTS.CUSTOMER_MASTER, customerData, {
         headers: {
           [HEADER_KEYS.CUSTOMER_TYPE]: 'agent'
         }
       });
+      console.log('✅ Agent customer created successfully:', response.data);
       return response.data;
     } catch (error: any) {
-      console.error('Create agent customer error:', error.response?.data || error.message);
+      console.error('❌ Create agent customer error:', error.response?.data || error.message);
       throw error.response?.data || error;
     }
   },
@@ -479,6 +526,82 @@ export const processService = {
       return response.data;
     } catch (error: any) {
       console.error('Deliver and process notes error:', error.response?.data || error.message);
+      throw error.response?.data || error;
+    }
+  },
+};
+
+// Settings Service
+export const settingsService = {
+  // Get settings
+  getSettings: async (): Promise<ApiResponse<SettingsResponse>> => {
+    try {
+      console.log('🔍 Fetching settings...');
+      const response = await api.get(API_ENDPOINTS.GET_SETTINGS);
+      console.log('📥 Settings response:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('Get settings error:', error.response?.data || error.message);
+      throw error.response?.data || error;
+    }
+  },
+
+  // Update settings using POST API with loop for each setting
+  updateSettings: async (settings: UpdateSettingsRequest): Promise<ApiResponse<any>> => {
+    try {
+      console.log('🔍 Updating settings with POST API...', settings);
+      
+      // Convert settings object to array of setting key-value pairs
+      // Note: morningWindowEnd is stored as DayCutOffTime in the API
+      const settingsArray = [
+        { settingKey: 'DayCutOffTime', settingValue: settings.morningWindowEnd }, // Morning Window End
+        { settingKey: 'NightCutOffTime', settingValue: settings.nightCutOffTime }
+      ];
+
+      // Loop through each setting and post individually
+      const results = [];
+      for (const setting of settingsArray) {
+        console.log(`📤 Posting setting: ${setting.settingKey} = ${setting.settingValue}`);
+        
+        const response = await api.post(API_ENDPOINTS.POST_SETTINGS, setting, {
+          headers: {
+            'accept': 'text/plain',
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        console.log(`✅ Posted ${setting.settingKey} successfully:`, response.data);
+        results.push(response.data);
+      }
+
+      console.log('📥 All settings updated successfully:', results);
+      
+      // Return success response
+      return {
+        success: true,
+        message: 'All settings updated successfully',
+        data: results
+      };
+    } catch (error: any) {
+      console.error('Update settings error:', error.response?.data || error.message);
+      throw error.response?.data || error;
+    }
+  },
+
+  // Post individual setting
+  postSetting: async (setting: PostSettingRequest): Promise<ApiResponse<any>> => {
+    try {
+      console.log('🔍 Posting individual setting...', setting);
+      const response = await api.post(API_ENDPOINTS.POST_SETTINGS, setting, {
+        headers: {
+          'accept': 'text/plain',
+          'Content-Type': 'application/json',
+        },
+      });
+      console.log('📥 Post setting response:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('Post setting error:', error.response?.data || error.message);
       throw error.response?.data || error;
     }
   },

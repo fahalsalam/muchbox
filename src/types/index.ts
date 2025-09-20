@@ -4,11 +4,27 @@ export interface LoginCredentials {
   password: string;
 }
 
+export type UserRole = 'Admin' | 'Privileged' | 'Normal';
+
 export interface User {
   id: string;
   username: string;
   email?: string;
-  role: string;
+  role: UserRole;
+}
+
+export interface SettingItem {
+  id: number;
+  settingKey: string;
+  settingValue: string;
+}
+
+export interface LoginResponse {
+  userID: number;
+  userName: string;
+  role: UserRole;
+  additionalConfig: any;
+  settings: SettingItem[];
 }
 
 // Customer Types
@@ -44,6 +60,7 @@ export interface ApiIndividualCustomer {
   meals: string; // JSON string like {"Breakfast":true,"Lunch":false,"Dinner":true}
   status: 'Active' | 'Inactive';
   ForzaCustomerID: string | null;
+  CustomerCode: string | null; // Backend sends with capital C
 }
 
 // Customer Creation Request Types
@@ -60,6 +77,7 @@ export interface CreateCustomerRequest {
     lunch: boolean;
     dinner: boolean;
   };
+  customerCode: string;
 }
 
 export interface CreateCompanyCustomerRequest {
@@ -75,6 +93,7 @@ export interface CreateCompanyCustomerRequest {
   dinnerPrice: string;
   creditLimit: string;
   creditDays: string;
+  customerCode: string;
 }
 
 export interface CreateAgentCustomerRequest {
@@ -87,6 +106,7 @@ export interface CreateAgentCustomerRequest {
   dinnerPrice: string;
   creditLimit: string;
   creditDays: string;
+  customerCode: string;
 }
 
 // API Customer Types (matches actual API responses)
@@ -106,6 +126,7 @@ export interface ApiCompanyCustomer {
   creditDays: number | null;
   status: 'Active' | 'Inactive';
   ForzaCustomerID: string | null;
+  CustomerCode: string | null; // Backend sends with capital C
 }
 
 export interface ApiAgentCustomer {
@@ -121,6 +142,7 @@ export interface ApiAgentCustomer {
   creditDays: number;
   status: 'Active' | 'Inactive';
   ForzaCustomerID: string | null;
+  CustomerCode: string | null; // Backend sends with capital C
 }
 
 export interface CompanyCustomer extends BaseCustomer {
@@ -446,4 +468,31 @@ export const QUERY_KEYS = {
   
   // Invoices
   INVOICES: ['invoices'],
+  
+  // Settings
+  SETTINGS: ['settings'],
 } as const;
+
+// Settings Types
+export interface AppSettings {
+  dayCutOffTime: string;
+  nightCutOffTime: string;
+  morningWindowEnd: string; // Morning window end time (default 09:00)
+}
+
+export interface SettingsResponse {
+  dayCutOffTime: string;
+  nightCutOffTime: string;
+  morningWindowEnd: string;
+}
+
+export interface UpdateSettingsRequest {
+  dayCutOffTime: string;
+  nightCutOffTime: string;
+  morningWindowEnd: string;
+}
+
+export interface PostSettingRequest {
+  settingKey: string;
+  settingValue: string;
+}

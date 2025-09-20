@@ -203,6 +203,7 @@ export function EditCustomerDialog({ open, onOpenChange, customer, mode }: EditC
         lunch: formData.meals.lunch,
         dinner: formData.meals.dinner,
       },
+      customerCode: customer?.CustomerCode || 'IND-001', // Use existing customer code or default
     }
 
     if (mode === 'add') {

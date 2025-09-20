@@ -6,8 +6,10 @@ import { CalendarIcon } from 'lucide-react'
 import { format } from 'date-fns'
 import { useCreateAgentCustomer } from '@/hooks/mutations/useCreateAgentCustomer'
 import { useUpdateAgentCustomer } from '@/hooks/mutations/useUpdateAgentCustomer'
+import { useGetAgentCustomers } from '@/hooks/queries/useGetAgentCustomers'
 import { showToast } from '@/lib/toast'
 import { ApiAgentCustomer, QUERY_KEYS } from '@/types'
+import { generateCustomerCode } from '@/lib/customerCode'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -44,10 +46,15 @@ interface AgentFormData {
   dinnerPrice: string
   creditLimit: string
   creditDays: string
+  customerCode: string
 }
 
 export function AddAgentDialog({ open, onOpenChange, agent, mode = 'add' }: AddAgentDialogProps) {
   const queryClient = useQueryClient()
+  
+  // Fetch existing agents to generate next customer code
+  const { data: agentsData } = useGetAgentCustomers()
+  
   const [formData, setFormData] = useState<AgentFormData>({
     fullName: '',
     mobile: '',
@@ -58,6 +65,7 @@ export function AddAgentDialog({ open, onOpenChange, agent, mode = 'add' }: AddA
     dinnerPrice: '',
     creditLimit: '',
     creditDays: '',
+    customerCode: '',
   })
 
   const createAgentMutation = useCreateAgentCustomer({
@@ -105,6 +113,7 @@ export function AddAgentDialog({ open, onOpenChange, agent, mode = 'add' }: AddA
       dinnerPrice: '',
       creditLimit: '',
       creditDays: '',
+      customerCode: '',
     })
   }
 
@@ -124,11 +133,23 @@ export function AddAgentDialog({ open, onOpenChange, agent, mode = 'add' }: AddA
         dinnerPrice: stripAED(agent.dinnerPrice),
         creditLimit: stripAED(agent.creditLimit),
         creditDays: agent.creditDays?.toString() || '',
+        customerCode: agent.CustomerCode || '',
       })
+    } else if (mode === 'add' && open && agentsData?.data) {
+      // Generate customer code for add mode
+      const existingCodes = agentsData.data
+        .map(agent => agent.CustomerCode)
+        .filter((code): code is string => code != null && code.trim() !== '')
+      const customerCode = generateCustomerCode('agent', existingCodes)
+      setFormData(prev => ({ ...prev, customerCode }))
+    } else if (mode === 'add' && open) {
+      // Fallback: generate first customer code if no data available
+      const customerCode = generateCustomerCode('agent')
+      setFormData(prev => ({ ...prev, customerCode }))
     } else if (mode === 'add') {
       resetForm()
     }
-  }, [agent, mode])
+  }, [agent, mode, open, agentsData?.data])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -136,7 +157,8 @@ export function AddAgentDialog({ open, onOpenChange, agent, mode = 'add' }: AddA
     // Validate required fields
     if (!formData.fullName || !formData.mobile || !formData.address || 
         !formData.joinedDate || !formData.breakfastPrice || !formData.lunchPrice || 
-        !formData.dinnerPrice || !formData.creditLimit || !formData.creditDays) {
+        !formData.dinnerPrice || !formData.creditLimit || !formData.creditDays ||
+        !formData.customerCode) {
       showToast.error('Validation Error', 'Please fill in all required fields.')
       return
     }
@@ -152,6 +174,7 @@ export function AddAgentDialog({ open, onOpenChange, agent, mode = 'add' }: AddA
       dinnerPrice: formData.dinnerPrice,
       creditLimit: formData.creditLimit,
       creditDays: formData.creditDays,
+      customerCode: formData.customerCode,
     }
 
     if (mode === 'add') {
@@ -190,6 +213,22 @@ export function AddAgentDialog({ open, onOpenChange, agent, mode = 'add' }: AddA
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Customer Code */}
+          <div className="space-y-2">
+            <Label htmlFor="customerCode" className="text-sm font-medium">
+              Customer Code *
+            </Label>
+            <Input
+              id="customerCode"
+              value={formData.customerCode}
+              placeholder="Auto-generated customer code"
+              required
+              readOnly
+              className="bg-gray-100 font-mono cursor-not-allowed"
+            />
+            <p className="text-xs text-gray-500">This code is auto-generated and cannot be modified</p>
+          </div>
+
           {/* Agent Information */}
           <div className="space-y-4">
             <div className="flex items-center gap-2">
