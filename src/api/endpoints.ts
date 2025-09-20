@@ -30,6 +30,9 @@ export const API_ENDPOINTS = {
   
   // Process Orders
   DELIVER_AND_PROCESS_NOTES: 'deliverAndProcessNotes',
+  
+  // Delivery Print
+  GET_DELIVERY_PRINT_DATA: 'DQ/getDeliveryPrintData',
 } as const;
 
 // HTTP Methods

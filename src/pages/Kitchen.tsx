@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react'
 import { format, addDays } from 'date-fns'
 import { useGetOrderSummary } from '@/hooks/queries/useGetOrderSummary'
+import { OrderPivotRow } from '@/hooks/queries/useGetOrderPivot'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
@@ -10,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import KitchenDetail from '@/pages/KitchenDetail'
 import { showToast } from '@/lib/toast'
+import { Printer } from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -65,6 +67,294 @@ const Kitchen: React.FC = () => {
       showToast.error('Processing Failed', e?.message || 'Unknown error')
     } finally {
       setProcessingKey(null)
+    }
+  }
+
+  // Print function
+  const handlePrint = async (entryDate: string, orderFor: string) => {
+    try {
+      // Fetch detailed data for printing
+      const base = 'https://munchbox-cugmarh6fcamdpd4.canadacentral-01.azurewebsites.net/api/getOrderPivot'
+      const url = `${base}?orderDate=${encodeURIComponent(entryDate)}${orderFor ? `&OrderFor=${encodeURIComponent(orderFor)}` : ''}`
+      const res = await fetch(url, { headers: { accept: 'text/plain', orderStatus: 'Orderd' } })
+      
+      if (!res.ok) {
+        throw new Error(`Failed to fetch data for printing`)
+      }
+      
+      const response = await res.json()
+      const pivotData = response.data?.[0] as OrderPivotRow
+      
+      if (!pivotData) {
+        showToast.error('Print Error', 'No data available for printing')
+        return
+      }
+
+      // Generate print content
+      const currentDate = new Date()
+      const dateStr = format(currentDate, 'dd-MM-yyyy')
+      const timeStr = format(currentDate, 'h:mm a')
+      
+      const printContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Kitchen Order Summary</title>
+          <style>
+            body { 
+              font-family: Arial, sans-serif; 
+              margin: 20px; 
+              background: #f5f5f5;
+              color: #333;
+            }
+            .container {
+              background: white;
+              padding: 30px;
+              border-radius: 10px;
+              box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+              max-width: 800px;
+              margin: 0 auto;
+            }
+            .header {
+              text-align: center;
+              margin-bottom: 30px;
+              padding: 20px;
+              background: #f8f9fa;
+              border-radius: 8px;
+            }
+            .header h1 {
+              margin: 0;
+              font-size: 28px;
+              color: #2c3e50;
+              font-weight: bold;
+            }
+            .date-time {
+              margin-top: 10px;
+              color: #666;
+              font-size: 16px;
+            }
+            .order-details {
+              margin-bottom: 30px;
+            }
+            .order-details h2 {
+              margin-bottom: 15px;
+              color: #34495e;
+              font-size: 20px;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 30px;
+              background: white;
+              border-radius: 8px;
+              overflow: hidden;
+              box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            th, td {
+              padding: 12px 15px;
+              text-align: left;
+              border-bottom: 1px solid #ddd;
+            }
+            th {
+              background: #f8f9fa;
+              font-weight: bold;
+              color: #2c3e50;
+            }
+            .text-right { text-align: right; }
+            .summary-cards {
+              display: flex;
+              justify-content: space-between;
+              gap: 20px;
+              margin-top: 30px;
+            }
+            .card {
+              flex: 1;
+              background: white;
+              padding: 20px;
+              border-radius: 8px;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+              text-align: center;
+            }
+            .card h3 {
+              margin: 0 0 10px 0;
+              color: #2c3e50;
+              font-size: 18px;
+            }
+            .card .total {
+              font-size: 36px;
+              font-weight: bold;
+              margin: 10px 0;
+              color: #e74c3c;
+            }
+            .breakdown {
+              margin-top: 15px;
+            }
+            .breakdown-item {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              margin: 8px 0;
+              font-size: 14px;
+            }
+            .dot {
+              width: 8px;
+              height: 8px;
+              border-radius: 50%;
+              margin-right: 8px;
+            }
+            .dot.non-veg { background: #e74c3c; }
+            .dot.veg { background: #27ae60; }
+            .breakdown-row {
+              display: flex;
+              align-items: center;
+            }
+            @media print {
+              body { background: white; margin: 0; }
+              .container { box-shadow: none; }
+              .summary-cards { break-inside: avoid; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Kitchen Order Summary</h1>
+              <div class="date-time">${dateStr} | ${timeStr}</div>
+            </div>
+            
+            <div class="order-details">
+              <h2>Order Details</h2>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Customer Type</th>
+                    <th class="text-right">Total Breakfast</th>
+                    <th class="text-right">Total Lunch</th>
+                    <th class="text-right">Total Dinner</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Individual</td>
+                    <td class="text-right">${pivotData.Breakfast_Individual}</td>
+                    <td class="text-right">${pivotData.Lunch_Individual}</td>
+                    <td class="text-right">${pivotData.Dinner_Individual}</td>
+                  </tr>
+                  <tr>
+                    <td>Company</td>
+                    <td class="text-right">${pivotData.Breakfast_Company}</td>
+                    <td class="text-right">${pivotData.Lunch_Company}</td>
+                    <td class="text-right">${pivotData.Dinner_Company}</td>
+                  </tr>
+                  <tr>
+                    <td>Agent</td>
+                    <td class="text-right">${pivotData.Breakfast_Agent}</td>
+                    <td class="text-right">${pivotData.Lunch_Agent}</td>
+                    <td class="text-right">${pivotData.Dinner_Agent}</td>
+                  </tr>
+                  <tr style="font-weight: bold; background: #f8f9fa;">
+                    <td>Total</td>
+                    <td class="text-right">${pivotData.Breakfast_Total}</td>
+                    <td class="text-right">${pivotData.Lunch_Total}</td>
+                    <td class="text-right">${pivotData.Dinner_Total}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            
+            <div class="summary-cards">
+              <div class="card">
+                <h3>Total Breakfast</h3>
+                <div class="total">${pivotData.Breakfast_Total}</div>
+                <div class="breakdown">
+                  <div class="breakdown-item">
+                    <div class="breakdown-row">
+                      <div class="dot non-veg"></div>
+                      <span>Non Veg ${Math.floor(pivotData.Breakfast_Total * 0.6)}</span>
+                    </div>
+                  </div>
+                  <div class="breakdown-item">
+                    <div class="breakdown-row">
+                      <div class="dot veg"></div>
+                      <span>Veg ${Math.floor(pivotData.Breakfast_Total * 0.4)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="card">
+                <h3>Total Lunch</h3>
+                <div class="total">${pivotData.Lunch_Total}</div>
+                <div class="breakdown">
+                  <div class="breakdown-item">
+                    <div class="breakdown-row">
+                      <div class="dot non-veg"></div>
+                      <span>Non Veg ${Math.floor(pivotData.Lunch_Total * 0.7)}</span>
+                    </div>
+                  </div>
+                  <div class="breakdown-item">
+                    <div class="breakdown-row">
+                      <div class="dot veg"></div>
+                      <span>Veg ${Math.floor(pivotData.Lunch_Total * 0.3)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="card">
+                <h3>Total Dinner</h3>
+                <div class="total">${pivotData.Dinner_Total}</div>
+                <div class="breakdown">
+                  <div class="breakdown-item">
+                    <div class="breakdown-row">
+                      <div class="dot non-veg"></div>
+                      <span>Non Veg ${Math.floor(pivotData.Dinner_Total * 0.8)}</span>
+                    </div>
+                  </div>
+                  <div class="breakdown-item">
+                    <div class="breakdown-row">
+                      <div class="dot veg"></div>
+                      <span>Veg ${Math.floor(pivotData.Dinner_Total * 0.2)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `
+
+      // Create iframe for printing
+      const iframe = document.createElement('iframe')
+      iframe.style.position = 'absolute'
+      iframe.style.width = '0'
+      iframe.style.height = '0'
+      iframe.style.border = 'none'
+      document.body.appendChild(iframe)
+
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document
+      if (iframeDoc) {
+        iframeDoc.open()
+        iframeDoc.write(printContent)
+        iframeDoc.close()
+
+        // Wait for content to load, then print
+        iframe.onload = () => {
+          setTimeout(() => {
+            iframe.contentWindow?.print()
+            // Clean up after printing
+            setTimeout(() => {
+              document.body.removeChild(iframe)
+            }, 1000)
+          }, 100)
+        }
+      }
+
+      showToast.success('Print Ready', 'Kitchen summary is ready for printing')
+    } catch (error: any) {
+      console.error('Print error:', error)
+      showToast.error('Print Error', error?.message || 'Failed to prepare print content')
     }
   }
 
@@ -164,46 +454,59 @@ const Kitchen: React.FC = () => {
                     <TableCell className="text-right">
                       <Badge className="bg-blue-100 text-blue-800 border-blue-200">{total}</Badge>
                     </TableCell>
-                    <TableCell className="text-right space-x-2">
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button 
-                            size="sm"
-                            className="bg-gradient-to-r from-sky-500 to-emerald-500 text-white hover:from-sky-600 hover:to-emerald-600 shadow"
-                          >
-                            View
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-2xl">
-                          <DialogHeader>
-                            <DialogTitle>Kitchen Details - {dateStr}</DialogTitle>
-                          </DialogHeader>
-                          <KitchenDetail dateProp={orderForLocal || ''} entryDateProp={format(new Date(r.OrderDate), 'yyyy-MM-dd')} />
-                        </DialogContent>
-                      </Dialog>
-                      {isProcessable && !hasProcessed && (
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button size="sm" disabled={processingKey === `${entryLocal}|${orderForLocal}` }>
-                              {processingKey === `${entryLocal}|${orderForLocal}` ? 'Processing…' : 'Process Kitchen'}
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button 
+                              size="sm"
+                              className="bg-gradient-to-r from-sky-500 to-emerald-500 text-white hover:from-sky-600 hover:to-emerald-600 shadow"
+                            >
+                              View
                             </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Process kitchen for {dateStr}?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This will process all orders for the selected date.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleProcess(entryLocal, orderForLocal || '', dateStr)}>
-                                Confirm
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      )}
+                          </DialogTrigger>
+                          <DialogContent className="max-w-2xl">
+                            <DialogHeader>
+                              <DialogTitle>Kitchen Details - {dateStr}</DialogTitle>
+                            </DialogHeader>
+                            <KitchenDetail dateProp={orderForLocal || ''} entryDateProp={format(new Date(r.OrderDate), 'yyyy-MM-dd')} />
+                          </DialogContent>
+                        </Dialog>
+                        
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handlePrint(entryLocal, orderForLocal || '')}
+                          className="bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
+                        >
+                          <Printer className="w-4 h-4 mr-1" />
+                          Print
+                        </Button>
+                        
+                        {isProcessable && !hasProcessed && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button size="sm" disabled={processingKey === `${entryLocal}|${orderForLocal}` }>
+                                {processingKey === `${entryLocal}|${orderForLocal}` ? 'Processing…' : 'Process Kitchen'}
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Process kitchen for {dateStr}?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will process all orders for the selected date.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleProcess(entryLocal, orderForLocal || '', dateStr)}>
+                                  Confirm
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 )

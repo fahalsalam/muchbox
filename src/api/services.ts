@@ -377,6 +377,27 @@ export const deliveryService = {
       throw error.response?.data || error;
     }
   },
+
+  // Get delivery print data
+  getDeliveryPrintData: async (orderDate: string, orderFor: string): Promise<ApiResponse<any>> => {
+    try {
+      console.log('🔍 Fetching delivery print data...');
+      const response = await api.get(API_ENDPOINTS.GET_DELIVERY_PRINT_DATA, {
+        params: {
+          orderDate,
+          orderFor,
+        },
+        headers: {
+          'accept': 'text/plain',
+        },
+      });
+      console.log('📥 Delivery print data response:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('Delivery print data error:', error.response?.data || error.message);
+      throw error.response?.data || error;
+    }
+  },
 };
 
 // Dashboard Services
@@ -462,3 +483,4 @@ export const processService = {
     }
   },
 };
+

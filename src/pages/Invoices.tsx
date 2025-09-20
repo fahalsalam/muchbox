@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useGetMonthlyInvoiceSummary } from '@/hooks/queries/useGetMonthlyInvoiceSummary'
 import { usePostInvoice } from '@/hooks/mutations/usePostInvoice'
-import { PostInvoiceRequest, MonthlyInvoiceSummary } from '@/types'
+import { PostInvoiceRequest } from '@/types'
 import { showToast } from '@/lib/toast'
 
 const Invoices: React.FC = () => {
@@ -50,69 +50,6 @@ const Invoices: React.FC = () => {
     setCurrentPage(page)
   }
 
-  // Process invoice function
-  const processInvoice = async (invoice: MonthlyInvoiceSummary) => {
-    try {
-      // Add to processing set
-      setProcessingInvoices(prev => new Set(prev).add(invoice.InvoiceNo))
-      
-      // Get details for this invoice
-      const invoiceDetailItems = invoiceDetails.filter(detail => 
-        detail.OrderAID === invoice.OrderAID && detail.OrderId === invoice.OrderId
-      )
-      
-      // Create the request payload
-      const payload: PostInvoiceRequest = {
-        header: {
-          referenceNo: `INV-${invoice.InvoiceNo}`,
-          prefix: 'INV',
-          suffix: invoice.InvoiceNo.toString(),
-          lpoDate: new Date().toISOString(),
-          entryDate: new Date().toISOString(),
-          customerId: parseInt(invoice.CustomerId),
-          invoiceAmount: invoice.TotalAmount,
-          paymentCollectionXml: '',
-          taxPostingXml: '',
-          termsXml: '',
-          messagesXml: '',
-          otherChargesXml: ''
-        },
-        details: invoiceDetailItems.map(detail => ({
-          sl: detail.SL,
-          barCode: detail.Barcode,
-          itemName: detail.ItemName,
-          unitPrice: detail.UnitPrice,
-          quantity: detail.Quantity,
-          total: detail.Total,
-          vatValue: detail.VatValue,
-          vatId: detail.VatId
-        }))
-      }
-      
-      await postInvoiceMutation.mutateAsync(payload)
-      
-      // Remove from processing and add to processed
-      setProcessingInvoices(prev => {
-        const newSet = new Set(prev)
-        newSet.delete(invoice.InvoiceNo)
-        return newSet
-      })
-      setProcessedInvoices(prev => new Set(prev).add(invoice.InvoiceNo))
-      
-      showToast.success('Invoice Processed', `Invoice #${invoice.InvoiceNo} processed successfully`)
-      
-    } catch (error: any) {
-      // Remove from processing set on error
-      setProcessingInvoices(prev => {
-        const newSet = new Set(prev)
-        newSet.delete(invoice.InvoiceNo)
-        return newSet
-      })
-      
-      showToast.error('Processing Failed', `Failed to process Invoice #${invoice.InvoiceNo}: ${error?.message || 'Unknown error'}`)
-    }
-  }
-
   // Process all invoices
   const processAllInvoices = async () => {
     const unprocessedInvoices = filteredInvoices.filter(invoice => 
@@ -120,7 +57,66 @@ const Invoices: React.FC = () => {
     )
     
     for (const invoice of unprocessedInvoices) {
-      await processInvoice(invoice)
+      try {
+        // Add to processing set
+        setProcessingInvoices(prev => new Set(prev).add(invoice.InvoiceNo))
+        
+        // Get details for this invoice
+        const invoiceDetailItems = invoiceDetails.filter(detail => 
+          detail.OrderAID === invoice.OrderAID && detail.OrderId === invoice.OrderId
+        )
+        
+        // Create the request payload
+        const payload: PostInvoiceRequest = {
+          header: {
+            referenceNo: `INV-${invoice.InvoiceNo}`,
+            prefix: 'INV',
+            suffix: invoice.InvoiceNo.toString(),
+            lpoDate: new Date().toISOString(),
+            entryDate: new Date().toISOString(),
+            customerId: parseInt(invoice.CustomerId),
+            invoiceAmount: invoice.TotalAmount,
+            paymentCollectionXml: '',
+            taxPostingXml: '',
+            termsXml: '',
+            messagesXml: '',
+            otherChargesXml: ''
+          },
+          details: invoiceDetailItems.map(detail => ({
+            sl: detail.SL,
+            barCode: detail.Barcode,
+            itemName: detail.ItemName,
+            unitPrice: detail.UnitPrice,
+            quantity: detail.Quantity,
+            total: detail.Total,
+            vatValue: detail.VatValue,
+            vatId: detail.VatId
+          }))
+        }
+        
+        await postInvoiceMutation.mutateAsync(payload)
+        
+        // Remove from processing and add to processed
+        setProcessingInvoices(prev => {
+          const newSet = new Set(prev)
+          newSet.delete(invoice.InvoiceNo)
+          return newSet
+        })
+        setProcessedInvoices(prev => new Set(prev).add(invoice.InvoiceNo))
+        
+        showToast.success('Invoice Processed', `Invoice #${invoice.InvoiceNo} processed successfully`)
+        
+      } catch (error: any) {
+        // Remove from processing set on error
+        setProcessingInvoices(prev => {
+          const newSet = new Set(prev)
+          newSet.delete(invoice.InvoiceNo)
+          return newSet
+        })
+        
+        showToast.error('Processing Failed', `Failed to process Invoice #${invoice.InvoiceNo}: ${error?.message || 'Unknown error'}`)
+      }
+      
       // Small delay between requests to avoid overwhelming the API
       await new Promise(resolve => setTimeout(resolve, 500))
     }
@@ -197,9 +193,9 @@ const Invoices: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Total Amount</p>
-              <p className="text-2xl font-bold text-green-600">
-                AED {invoices.reduce((sum, inv) => sum + inv.TotalAmount, 0).toLocaleString()}
-              </p>
+                <p className="text-2xl font-bold text-green-600">
+                  ₹{invoices.reduce((sum, inv) => sum + inv.TotalAmount, 0).toLocaleString()}
+                </p>
             </div>
             <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
               <span className="text-green-600 text-lg">💰</span>
@@ -307,7 +303,7 @@ const Invoices: React.FC = () => {
                     </TableCell>
                     <TableCell className="text-right">
                     <Badge className="bg-blue-100 text-blue-800 border-blue-200">
-                      AED {invoice.TotalAmount.toLocaleString()}
+                      ₹{invoice.TotalAmount.toLocaleString()}
                     </Badge>
                     </TableCell>
                     <TableCell className="text-right">
@@ -332,15 +328,9 @@ const Invoices: React.FC = () => {
                             ✅ Processed
                           </Badge>
                         ) : (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => processInvoice(invoice)}
-                            disabled={processingInvoices.has(invoice.InvoiceNo)}
-                            className="text-xs"
-                          >
-                            Process
-                          </Button>
+                          <Badge className="bg-gray-100 text-gray-800 border-gray-200">
+                            Pending
+                          </Badge>
                         )}
                       </div>
                     </TableCell>
