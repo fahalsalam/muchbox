@@ -31,6 +31,11 @@ export const useLogin = (
         setUser(userData.userID, userData.userName, userData.role as UserRole);
         
         console.log('👤 User context updated after login:', userData);
+        console.log('🔍 Login role validation:', {
+          role: userData.role,
+          roleType: typeof userData.role,
+          isValidRole: ['Admin', 'Privileged', 'Normal', 'User'].includes(userData.role)
+        });
       }
     },
     ...options,

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { CalendarIcon, AlertCircle, Clock, User, CheckCircle2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { useGetIndividualCustomers } from '@/hooks/queries/useGetIndividualCustomers'
@@ -45,8 +45,29 @@ export function EnhancedOrderForm({ onAddOrder, onDateChange, orderForDate }: En
   })
   
   const [currentTime] = useState(new Date())
-  const orderLogic = userRole ? getOrderCreationLogic(userRole, settings, currentTime) : null
-  const explanation = userRole ? getOrderDateExplanation(userRole, settings, currentTime) : null
+  
+  // Force re-render when userRole changes (fix for role switching bug)
+  useEffect(() => {
+    // This effect will trigger re-render when userRole changes
+    // No action needed - just dependency tracking for re-render
+  }, [userRole, userName, isAdmin, isPrivileged])
+
+  // Use useMemo to ensure orderLogic recalculates when userRole changes
+  const orderLogic = useMemo(() => {
+    if (!userRole) {
+      return null
+    }
+    
+    return getOrderCreationLogic(userRole, settings, currentTime)
+  }, [userRole, settings, settingsLoading, currentTime])
+  
+  const explanation = useMemo(() => {
+    if (!userRole) {
+      return null
+    }
+    
+    return getOrderDateExplanation(userRole, settings, currentTime)
+  }, [userRole, settings, currentTime])
 
   // Update order date based on logic when component mounts
   useEffect(() => {

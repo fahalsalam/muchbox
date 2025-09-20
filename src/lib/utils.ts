@@ -6,7 +6,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 // Currency formatting utility
-export function formatCurrency(amount: number | null | undefined, currency: string = '₹'): string {
+export function formatCurrency(amount: number | null | undefined, currency: string = 'AED'): string {
   if (amount === null || amount === undefined || isNaN(Number(amount))) {
     return `${currency}0.00`
   }

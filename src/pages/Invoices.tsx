@@ -194,7 +194,7 @@ const Invoices: React.FC = () => {
             <div>
               <p className="text-sm font-medium text-gray-600">Total Amount</p>
                 <p className="text-2xl font-bold text-green-600">
-                  ₹{invoices.reduce((sum, inv) => sum + inv.TotalAmount, 0).toLocaleString()}
+                  AED {invoices.reduce((sum, inv) => sum + inv.TotalAmount, 0).toLocaleString()}
                 </p>
             </div>
             <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
@@ -303,7 +303,7 @@ const Invoices: React.FC = () => {
                     </TableCell>
                     <TableCell className="text-right">
                     <Badge className="bg-blue-100 text-blue-800 border-blue-200">
-                      ₹{invoice.TotalAmount.toLocaleString()}
+                      AED {invoice.TotalAmount.toLocaleString()}
                     </Badge>
                     </TableCell>
                     <TableCell className="text-right">

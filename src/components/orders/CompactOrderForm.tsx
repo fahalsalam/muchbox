@@ -1,16 +1,15 @@
 "use client"
 
 import { useEffect, useRef, useState, useMemo } from 'react'
-import { CalendarIcon, Plus, Search, X, User, Clock, AlertCircle, Shield, UserCheck, Lock } from 'lucide-react'
+import { CalendarIcon, Plus, Search, X, User, Clock, Shield, UserCheck, Lock } from 'lucide-react'
 import { format } from 'date-fns'
-import { useGetIndividualCustomers } from '@/hooks/queries/useGetIndividualCustomers'
 import { useGetCompanyCustomers } from '@/hooks/queries/useGetCompanyCustomers'
 import { useGetAgentCustomers } from '@/hooks/queries/useGetAgentCustomers'
 import { useUser } from '@/contexts/UserContext'
 import { useSettings } from '@/hooks/useSettings'
 import { getOrderCreationLogic } from '@/lib/orderLogic'
 import { showToast } from '@/lib/toast'
-import { ApiIndividualCustomer } from '@/types'
+import { ApiCompanyCustomer, ApiAgentCustomer } from '@/types'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -25,6 +24,66 @@ import {
 // Removed global preference selector; per-meal preferences will be captured instead
 import { Badge } from '@/components/ui/badge'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+
+// Locked Order Overlay Component
+function LockedOrderOverlay({ reason }: { reason?: string }) {
+  // Format time from 24-hour to AM/PM format
+  const formatTimeToAMPM = (timeString: string) => {
+    try {
+      const [hours, minutes] = timeString.split(':')
+      const date = new Date()
+      date.setHours(parseInt(hours), parseInt(minutes))
+      return date.toLocaleTimeString('en-US', { 
+        hour: 'numeric', 
+        minute: '2-digit', 
+        hour12: true 
+      })
+    } catch {
+      return timeString
+    }
+  }
+
+  // Extract and format time from reason message
+  const formatReason = (reason?: string) => {
+    if (!reason) return 'Orders are currently not available'
+    
+    // Look for time pattern like "22:00" and convert to AM/PM
+    return reason.replace(/(\d{1,2}:\d{2})/g, (match) => formatTimeToAMPM(match))
+  }
+
+  return (
+    <div className="absolute inset-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm z-50 flex flex-col items-center justify-center p-6">
+      <div className="text-center space-y-4">
+        {/* Animated Lock Icon */}
+        <div className="relative">
+          <div className="w-16 h-16 mx-auto mb-4">
+            <Lock className="w-full h-full text-red-500 animate-pulse" />
+          </div>
+          {/* Rotating lock ring animation */}
+          <div className="absolute inset-0 w-16 h-16 mx-auto">
+            <div className="w-full h-full border-4 border-red-200 border-t-red-500 rounded-full animate-spin"></div>
+          </div>
+        </div>
+        
+        {/* Locked Message */}
+        <div className="space-y-2">
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+            Orders Locked
+          </h3>
+          <p className="text-sm text-gray-600 dark:text-gray-400 max-w-xs">
+            {formatReason(reason)}
+          </p>
+        </div>
+        
+        {/* Time indicator */}
+        <div className="flex items-center justify-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+          <Clock className="h-3 w-3" />
+          <span>Please try again tomorrow</span>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 interface OrderData {
   customerId: string
@@ -51,9 +110,9 @@ interface CompactOrderFormProps {
 }
 
 export function CompactOrderForm({ onAddOrder, onDateChange, orderForDate, editingOrder = null, resetKey }: CompactOrderFormProps) {
-  const [selectedCustomer, setSelectedCustomer] = useState<ApiIndividualCustomer | null>(null)
+  const [selectedCustomer, setSelectedCustomer] = useState<ApiCompanyCustomer | ApiAgentCustomer | null>(null)
   const [customerSearch, setCustomerSearch] = useState('')
-  const [customerType, setCustomerType] = useState<'individual' | 'company' | 'agent'>('individual')
+  const [customerType, setCustomerType] = useState<'company' | 'agent'>('company')
   // Capture per-meal veg/non-veg splits
   const [quantities, setQuantities] = useState({
     breakfastVeg: 0,
@@ -68,13 +127,15 @@ export function CompactOrderForm({ onAddOrder, onDateChange, orderForDate, editi
   const [currentTime, setCurrentTime] = useState(new Date()) // Live time state
   const searchInputRef = useRef<HTMLInputElement | null>(null)
 
-  const { data: indivData, isLoading: indivLoading } = useGetIndividualCustomers()
   const { data: companyData, isLoading: companyLoading } = useGetCompanyCustomers()
   const { data: agentData, isLoading: agentLoading } = useGetAgentCustomers()
   
   // Order creation logic hooks
   const { userRole, userName, isAdmin, isPrivileged } = useUser()
   const { settings, isLoading: settingsLoading } = useSettings()
+  
+  // Force update mechanism
+  const [forceRender, setForceRender] = useState(0)
   
   // Debug logging
   useEffect(() => {
@@ -123,7 +184,6 @@ export function CompactOrderForm({ onAddOrder, onDateChange, orderForDate, editi
   
 
   const customersLoading =
-    (customerType === 'individual' && indivLoading) ||
     (customerType === 'company' && companyLoading) ||
     (customerType === 'agent' && agentLoading) ||
     false
@@ -135,6 +195,43 @@ export function CompactOrderForm({ onAddOrder, onDateChange, orderForDate, editi
     }, 1000) // Update every second
 
     return () => clearInterval(timer) // Cleanup on unmount
+  }, [])
+
+  // Force re-render when userRole changes (fix for role switching bug)
+  useEffect(() => {
+    console.log('🔄 CompactOrderForm - User context changed:', {
+      userRole,
+      userName,
+      isAdmin,
+      isPrivileged
+    });
+    // Force a re-render when user context changes
+    setForceRender(prev => prev + 1);
+  }, [userRole, userName, isAdmin, isPrivileged])
+  
+  // Listen for localStorage changes (for role switching)
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'userInfo') {
+        console.log('🔄 localStorage userInfo changed, forcing re-render');
+        // Force a re-render by updating a dummy state
+        setCurrentTime(new Date());
+      }
+    };
+    
+    // Listen for custom user role change events
+    const handleUserRoleChange = (e: CustomEvent) => {
+      console.log('🔄 Custom userRoleChanged event received:', e.detail);
+      setForceRender(prev => prev + 1);
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('userRoleChanged', handleUserRoleChange as EventListener);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('userRoleChanged', handleUserRoleChange as EventListener);
+    };
   }, [])
 
   // Calculate order creation logic
@@ -179,7 +276,7 @@ export function CompactOrderForm({ onAddOrder, onDateChange, orderForDate, editi
       ...logic,
       explanation: getOrderExplanation(settings, logic.isInMorningWindow)
     }
-  }, [userRole, settings, settingsLoading, currentTime]) // Add currentTime dependency
+  }, [userRole, settings, settingsLoading, currentTime, forceRender]) // Add forceRender dependency
 
   // Helper function to generate explanation text
   function getOrderExplanation(settings: any, isInMorningWindow: boolean) {
@@ -193,9 +290,7 @@ export function CompactOrderForm({ onAddOrder, onDateChange, orderForDate, editi
   }
 
   const customersData =
-    customerType === 'individual'
-      ? indivData
-      : customerType === 'company'
+    customerType === 'company'
       ? companyData
       : agentData
 
@@ -205,9 +300,9 @@ export function CompactOrderForm({ onAddOrder, onDateChange, orderForDate, editi
       (customer?.mobile || '').includes(customerSearch)
     )
 
-  const handleCustomerSelect = (customer: ApiIndividualCustomer) => {
+  const handleCustomerSelect = (customer: ApiCompanyCustomer | ApiAgentCustomer) => {
     setSelectedCustomer(customer)
-    setCustomerSearch(customer.name)
+    setCustomerSearch(customer.name || '')
     setShowCustomerDropdown(false)
   }
 
@@ -231,7 +326,8 @@ export function CompactOrderForm({ onAddOrder, onDateChange, orderForDate, editi
     }
 
     if (!orderLogic.permissions.canPlaceOrder) {
-      showToast.error('Orders Blocked', orderLogic.permissions.reason || 'Orders are currently not allowed')
+      // Orders are blocked - no toast notification, just return silently
+      // The LockedOrderOverlay will show the locked state
       return
     }
 
@@ -246,8 +342,8 @@ export function CompactOrderForm({ onAddOrder, onDateChange, orderForDate, editi
 
     const orderData: OrderData = {
       customerId: selectedCustomer.id.toString(),
-      customerName: selectedCustomer.name,
-      customerMobile: selectedCustomer.mobile,
+      customerName: selectedCustomer.name || '',
+      customerMobile: selectedCustomer.mobile || '',
       preference: 'none',
       breakfast: totalBreakfast,
       lunch: totalLunch,
@@ -315,8 +411,7 @@ export function CompactOrderForm({ onAddOrder, onDateChange, orderForDate, editi
       id: parseInt(editingOrder.customerId, 10),
       name: editingOrder.customerName,
       mobile: editingOrder.customerMobile,
-      dietPreference: 'veg',
-    } as unknown as ApiIndividualCustomer)
+    } as unknown as ApiCompanyCustomer | ApiAgentCustomer)
     setCustomerSearch(editingOrder.customerName)
   }, [editingOrder])
 
@@ -336,7 +431,7 @@ export function CompactOrderForm({ onAddOrder, onDateChange, orderForDate, editi
   }, [resetKey])
 
   return (
-    <Card className="h-full overflow-hidden flex flex-col">
+    <Card className="h-full overflow-hidden flex flex-col relative">
       <CardHeader className="pb-3 flex-shrink-0">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg font-semibold">Add New Order</CardTitle>
@@ -422,12 +517,7 @@ export function CompactOrderForm({ onAddOrder, onDateChange, orderForDate, editi
 
             {/* Order Permissions & Explanation */}
             <div className="space-y-2">
-              {!orderLogic.permissions.canPlaceOrder ? (
-                <div className="flex items-center gap-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-sm">
-                  <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
-                  <span className="text-red-700 dark:text-red-300">{orderLogic.permissions.reason}</span>
-                </div>
-              ) : (
+              {orderLogic.permissions.canPlaceOrder && (
                 <div className="flex items-center gap-2 p-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded text-sm">
                   <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0"></div>
                   <span className="text-green-700 dark:text-green-300">{orderLogic.explanation}</span>
@@ -453,10 +543,6 @@ export function CompactOrderForm({ onAddOrder, onDateChange, orderForDate, editi
         <div className="space-y-2">
           <Label className="text-sm font-medium">Customer Type</Label>
           <RadioGroup value={customerType} onValueChange={(v)=> setCustomerType(v as any)} className="flex items-center gap-4">
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="individual" id="ct-ind" />
-              <Label htmlFor="ct-ind" className="text-sm">Individual</Label>
-            </div>
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="company" id="ct-com" />
               <Label htmlFor="ct-com" className="text-sm">Company</Label>
@@ -508,24 +594,12 @@ export function CompactOrderForm({ onAddOrder, onDateChange, orderForDate, editi
                       <div
                         key={customer.id}
                         className="flex cursor-pointer items-center justify-between px-10 py-3 text-sm hover:bg-blue-50 transition-colors"
-                        onClick={() => handleCustomerSelect(customer as ApiIndividualCustomer)}
+                        onClick={() => handleCustomerSelect(customer as ApiCompanyCustomer | ApiAgentCustomer)}
                       >
                         <div className="flex-1">
                           <div className="font-medium text-gray-900">{customer.name}</div>
                           <div className="text-xs text-gray-500 mt-0.5">{customer.mobile}</div>
                         </div>
-                        {customer.dietPreference && (
-                          <Badge 
-                            variant="outline" 
-                            className={`text-xs ml-2 ${
-                              customer.dietPreference === 'veg' 
-                                ? 'bg-green-50 text-green-700 border-green-200'
-                                : 'bg-red-50 text-red-700 border-red-200'
-                            }`}
-                          >
-                            {customer.dietPreference}
-                          </Badge>
-                        )}
                       </div>
                     ))}
                   </div>
@@ -545,16 +619,6 @@ export function CompactOrderForm({ onAddOrder, onDateChange, orderForDate, editi
                   <div className="text-sm font-medium text-green-900">{selectedCustomer.name}</div>
                   <div className="text-xs text-green-700 mt-0.5">{selectedCustomer.mobile}</div>
                 </div>
-                <Badge 
-                  variant="outline" 
-                  className={`text-xs ${
-                    selectedCustomer.dietPreference === 'veg' 
-                      ? 'bg-green-100 text-green-800 border-green-300'
-                      : 'bg-red-100 text-red-800 border-red-300'
-                  }`}
-                >
-                  {selectedCustomer.dietPreference}
-                </Badge>
               </div>
             </div>
           )}
@@ -733,6 +797,11 @@ export function CompactOrderForm({ onAddOrder, onDateChange, orderForDate, editi
           </Button>
         </div>
       </CardContent>
+      
+      {/* Locked Order Overlay */}
+      {!orderLogic?.permissions.canPlaceOrder && (
+        <LockedOrderOverlay reason={orderLogic?.permissions.reason} />
+      )}
     </Card>
   )
 }

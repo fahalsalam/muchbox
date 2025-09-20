@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { addDays, format as formatDate } from 'date-fns'
 import { useCreateOrder } from '@/hooks/mutations/useCreateOrder'
+import { useUser } from '@/contexts/UserContext'
 import { showToast } from '@/lib/toast'
 // import { OrderFormData } from '@/types'
 
@@ -40,6 +41,7 @@ interface OrderData {
 }
 
 const AddOrder: React.FC = () => {
+  const { userRole } = useUser()
   const [orders, setOrders] = useState<OrderData[]>([])
   const [orderForDate, setOrderForDate] = useState<Date>(addDays(new Date(), 1))
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
@@ -341,6 +343,7 @@ const AddOrder: React.FC = () => {
           {/* Left Column - Order Form */}
           <div className="h-full min-h-0 flex flex-col">
             <CompactOrderForm
+              key={`${userRole}-${formResetToken}`}
               onAddOrder={handleAddOrder}
               onDateChange={handleDateChange}
               orderForDate={orderForDate}

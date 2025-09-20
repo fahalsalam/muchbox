@@ -4,7 +4,7 @@ export interface LoginCredentials {
   password: string;
 }
 
-export type UserRole = 'Admin' | 'Privileged' | 'Normal';
+export type UserRole = 'Admin' | 'Privileged' | 'Normal' | 'User';
 
 export interface User {
   id: string;

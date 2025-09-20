@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { addDays } from 'date-fns'
 import { useCreateOrder } from '@/hooks/mutations/useCreateOrder'
+import { useUser } from '@/contexts/UserContext'
 import { showToast } from '@/lib/toast'
 import { OrderFormData } from '@/types'
 import { CheckCircle2, ShoppingCart } from 'lucide-react'
@@ -23,6 +24,7 @@ interface OrderData {
 }
 
 const CompactAddOrder: React.FC = () => {
+  const { userRole } = useUser()
   const [orders, setOrders] = useState<OrderData[]>([])
   const [orderForDate, setOrderForDate] = useState<Date>(addDays(new Date(), 1))
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
@@ -181,6 +183,7 @@ const CompactAddOrder: React.FC = () => {
           {/* Left Column - Order Form */}
           <div className="h-full">
             <CompactOrderForm
+              key={`${userRole}`}
               onAddOrder={handleAddOrder}
               onDateChange={handleDateChange}
               orderForDate={orderForDate}

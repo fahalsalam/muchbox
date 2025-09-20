@@ -81,7 +81,7 @@ export function checkOrderPermissions(
     };
   }
   
-  // Normal and Privileged users can place orders before cut-off
+  // Normal, User, and Privileged users can place orders before cut-off
   // Step 4: Date Edit Permissions
   if (userRole === 'Privileged') {
     return {
@@ -91,11 +91,11 @@ export function checkOrderPermissions(
     };
   }
   
-  // Normal users
+  // Normal and User roles - restricted permissions
   return {
     canPlaceOrder: true,
     canEditOrderDate: false,
-    reason: 'OrderDate is locked for Normal users'
+    reason: userRole === 'User' ? 'OrderDate is locked for User role' : 'OrderDate is locked for Normal users'
   };
 }
 
@@ -175,6 +175,8 @@ export function getOrderDateExplanation(
     explanation += ' As an Admin, you can place orders anytime and edit delivery dates freely.';
   } else if (userRole === 'Privileged') {
     explanation += ` Orders are blocked after ${cutOffFormatted}, but you can edit delivery dates.`;
+  } else if (userRole === 'User') {
+    explanation += ` Orders are blocked after ${cutOffFormatted}, and delivery date is locked for User role.`;
   } else {
     explanation += ` Orders are blocked after ${cutOffFormatted}, and delivery date is locked.`;
   }
@@ -194,10 +196,10 @@ export function validateCustomOrderDate(
     return { isValid: true };
   }
   
-  if (userRole === 'Normal') {
+  if (userRole === 'Normal' || userRole === 'User') {
     return { 
       isValid: false, 
-      reason: 'Normal users cannot edit delivery dates' 
+      reason: userRole === 'User' ? 'User role cannot edit delivery dates' : 'Normal users cannot edit delivery dates' 
     };
   }
   
