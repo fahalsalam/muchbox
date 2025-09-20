@@ -6,6 +6,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useGetMonthlyInvoiceSummary } from '@/hooks/queries/useGetMonthlyInvoiceSummary'
+import { usePostInvoice } from '@/hooks/mutations/usePostInvoice'
+import { PostInvoiceRequest, MonthlyInvoiceSummary } from '@/types'
+import { showToast } from '@/lib/toast'
 
 const Invoices: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('')
@@ -14,8 +17,12 @@ const Invoices: React.FC = () => {
   
   // Fetch invoice data from API
   const { data: invoiceData, isLoading, error, refetch, isFetching } = useGetMonthlyInvoiceSummary()
+  const postInvoiceMutation = usePostInvoice()
   
-  const invoices = invoiceData?.data || []
+  const invoices = invoiceData?.data?.headers || []
+  const invoiceDetails = invoiceData?.data?.details || []
+  const [processingInvoices, setProcessingInvoices] = useState<Set<number>>(new Set())
+  const [processedInvoices, setProcessedInvoices] = useState<Set<number>>(new Set())
 
   // Filter invoices based on search term
   const filteredInvoices = useMemo(() => {
@@ -41,6 +48,82 @@ const Invoices: React.FC = () => {
   
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
+  }
+
+  // Process invoice function
+  const processInvoice = async (invoice: MonthlyInvoiceSummary) => {
+    try {
+      // Add to processing set
+      setProcessingInvoices(prev => new Set(prev).add(invoice.InvoiceNo))
+      
+      // Get details for this invoice
+      const invoiceDetailItems = invoiceDetails.filter(detail => 
+        detail.OrderAID === invoice.OrderAID && detail.OrderId === invoice.OrderId
+      )
+      
+      // Create the request payload
+      const payload: PostInvoiceRequest = {
+        header: {
+          referenceNo: `INV-${invoice.InvoiceNo}`,
+          prefix: 'INV',
+          suffix: invoice.InvoiceNo.toString(),
+          lpoDate: new Date().toISOString(),
+          entryDate: new Date().toISOString(),
+          customerId: parseInt(invoice.CustomerId),
+          invoiceAmount: invoice.TotalAmount,
+          paymentCollectionXml: '',
+          taxPostingXml: '',
+          termsXml: '',
+          messagesXml: '',
+          otherChargesXml: ''
+        },
+        details: invoiceDetailItems.map(detail => ({
+          sl: detail.SL,
+          barCode: detail.Barcode,
+          itemName: detail.ItemName,
+          unitPrice: detail.UnitPrice,
+          quantity: detail.Quantity,
+          total: detail.Total,
+          vatValue: detail.VatValue,
+          vatId: detail.VatId
+        }))
+      }
+      
+      await postInvoiceMutation.mutateAsync(payload)
+      
+      // Remove from processing and add to processed
+      setProcessingInvoices(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(invoice.InvoiceNo)
+        return newSet
+      })
+      setProcessedInvoices(prev => new Set(prev).add(invoice.InvoiceNo))
+      
+      showToast.success('Invoice Processed', `Invoice #${invoice.InvoiceNo} processed successfully`)
+      
+    } catch (error: any) {
+      // Remove from processing set on error
+      setProcessingInvoices(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(invoice.InvoiceNo)
+        return newSet
+      })
+      
+      showToast.error('Processing Failed', `Failed to process Invoice #${invoice.InvoiceNo}: ${error?.message || 'Unknown error'}`)
+    }
+  }
+
+  // Process all invoices
+  const processAllInvoices = async () => {
+    const unprocessedInvoices = filteredInvoices.filter(invoice => 
+      !processedInvoices.has(invoice.InvoiceNo) && !processingInvoices.has(invoice.InvoiceNo)
+    )
+    
+    for (const invoice of unprocessedInvoices) {
+      await processInvoice(invoice)
+      // Small delay between requests to avoid overwhelming the API
+      await new Promise(resolve => setTimeout(resolve, 500))
+    }
   }
 
   // Loading state
@@ -86,8 +169,12 @@ const Invoices: React.FC = () => {
             />
           </div>
           <Button variant="outline" size="sm" onClick={()=>{setSearchTerm('')}}>Clear</Button>
-          <Button className="text-sm bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 shadow-lg" onClick={()=>refetch()} disabled={isFetching}>
-            {isFetching?'Refreshing…':'Process Invoice'}
+          <Button 
+            className="text-sm bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 shadow-lg" 
+            onClick={processAllInvoices} 
+            disabled={isFetching || processingInvoices.size > 0 || filteredInvoices.length === 0}
+          >
+            {processingInvoices.size > 0 ? `Processing... (${processingInvoices.size})` : 'Process Invoice'}
           </Button>
         </div>
       </div>
@@ -180,6 +267,7 @@ const Invoices: React.FC = () => {
                 <TableHead className="text-right">Total Amount</TableHead>
                 <TableHead className="text-right">Payment Mode</TableHead>
                 <TableHead className="text-right">Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -232,6 +320,30 @@ const Invoices: React.FC = () => {
                       {invoice.PayStatus}
                     </Badge>
                     </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        {processingInvoices.has(invoice.InvoiceNo) ? (
+                          <Badge className="bg-blue-100 text-blue-800 border-blue-200">
+                            <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-1"></div>
+                            Processing...
+                          </Badge>
+                        ) : processedInvoices.has(invoice.InvoiceNo) ? (
+                          <Badge className="bg-green-100 text-green-800 border-green-200">
+                            ✅ Processed
+                          </Badge>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => processInvoice(invoice)}
+                            disabled={processingInvoices.has(invoice.InvoiceNo)}
+                            className="text-xs"
+                          >
+                            Process
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
                   </TableRow>
               ))}
             </TableBody>
@@ -239,7 +351,7 @@ const Invoices: React.FC = () => {
             {/* Pagination Footer */}
             {totalPages > 1 && (
               <TableRow className="border-t-2 border-gray-200">
-                <TableCell colSpan={10} className="py-4 px-4 bg-gray-50">
+                <TableCell colSpan={11} className="py-4 px-4 bg-gray-50">
                   <div className="flex items-center justify-between">
                     <div className="text-sm text-gray-600 font-medium">
                       Showing {startIndex + 1} to {Math.min(endIndex, filteredInvoices.length)} of {filteredInvoices.length} invoices

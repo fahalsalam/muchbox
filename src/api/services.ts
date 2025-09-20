@@ -18,7 +18,8 @@ import {
   CreateCustomerRequest,
   CreateCompanyCustomerRequest,
   CreateAgentCustomerRequest,
-  MonthlyInvoiceSummary,
+  MonthlyInvoiceResponse,
+  PostInvoiceRequest,
 } from '@/types';
 
 // Authentication Services
@@ -355,6 +356,27 @@ export const deliveryService = {
       throw error.response?.data || error;
     }
   },
+
+  // Process delivery orders with date parameters
+  processDeliveryOrders: async (orderDate: string, orderFor: string): Promise<ApiResponse<any>> => {
+    try {
+      console.log('🔍 Processing delivery orders...');
+      const response = await api.post(API_ENDPOINTS.DELIVER_ORDERS, '', {
+        params: {
+          orderDate,
+          orderFor,
+        },
+        headers: {
+          'accept': 'text/plain',
+        },
+      });
+      console.log('📥 Delivery orders response:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('Process delivery orders error:', error.response?.data || error.message);
+      throw error.response?.data || error;
+    }
+  },
 };
 
 // Dashboard Services
@@ -362,7 +384,14 @@ export const dashboardService = {
   // Get dashboard data
   getDashboardData: async (): Promise<ApiResponse<DashboardData>> => {
     try {
+      console.log('🔍 Fetching dashboard data...');
       const response = await api.get(API_ENDPOINTS.DASHBOARD);
+      console.log('📥 Dashboard API response:', response.data);
+      console.log('📊 Dashboard data structure:', {
+        summary: response.data?.data?.summary,
+        recentActivity: response.data?.data?.recentActivity,
+        recentActivityLength: response.data?.data?.recentActivity?.length
+      });
       return response.data;
     } catch (error: any) {
       console.error('Get dashboard data error:', error.response?.data || error.message);
@@ -374,7 +403,7 @@ export const dashboardService = {
 // Invoice Services
 export const invoiceService = {
   // Get monthly invoice summary
-  getMonthlyInvoiceSummary: async (): Promise<ApiResponse<MonthlyInvoiceSummary[]>> => {
+  getMonthlyInvoiceSummary: async (): Promise<ApiResponse<MonthlyInvoiceResponse>> => {
     try {
       console.log('🔍 Fetching monthly invoice summary...');
       const response = await api.get(API_ENDPOINTS.MONTHLY_INVOICE_SUMMARY, {
@@ -386,6 +415,49 @@ export const invoiceService = {
       return response.data;
     } catch (error: any) {
       console.error('Get monthly invoice summary error:', error.response?.data || error.message);
+      throw error.response?.data || error;
+    }
+  },
+
+  // Post invoice
+  postInvoice: async (data: PostInvoiceRequest): Promise<ApiResponse<any>> => {
+    try {
+      console.log('🔍 Posting invoice...');
+      const response = await api.post(API_ENDPOINTS.POST_INVOICE, data, {
+        headers: {
+          'accept': '*/*',
+          'Content-Type': 'application/json',
+        },
+      });
+      console.log('📥 Post invoice response:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('Post invoice error:', error.response?.data || error.message);
+      throw error.response?.data || error;
+    }
+  },
+};
+
+// Process Services
+export const processService = {
+  // Deliver and process notes
+  deliverAndProcessNotes: async (orderDate: string, orderFor: string): Promise<ApiResponse<any>> => {
+    try {
+      console.log('🔍 Processing orders with deliverAndProcessNotes...');
+      const response = await api.post(API_ENDPOINTS.DELIVER_AND_PROCESS_NOTES, '', {
+        params: {
+          orderDate,
+          orderFor,
+        },
+        headers: {
+          'accept': 'text/plain',
+          'Content-Type': 'application/json',
+        },
+      });
+      console.log('📥 Deliver and process notes response:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('Deliver and process notes error:', error.response?.data || error.message);
       throw error.response?.data || error;
     }
   },

@@ -19,13 +19,17 @@ export const API_ENDPOINTS = {
   
   // Order Processing
   PROCESS_ORDERS: 'processOrders',
-  DELIVER_ORDERS: 'deliverOrders',
+  DELIVER_ORDERS: 'deliverAndProcessNotes',
   
   // Dashboard
   DASHBOARD: 'getCustomerDashboard',
   
   // Invoices
   MONTHLY_INVOICE_SUMMARY: 'getMonthlyInvoiceSummary',
+  POST_INVOICE: 'Invoice/postInvoice',
+  
+  // Process Orders
+  DELIVER_AND_PROCESS_NOTES: 'deliverAndProcessNotes',
 } as const;
 
 // HTTP Methods

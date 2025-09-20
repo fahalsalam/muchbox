@@ -102,7 +102,9 @@ const Dashboard: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-sky-900 dark:text-sky-100">
-                  {dashboardData?.data?.recentActivity?.length || 0}
+                  {dashboardData?.data?.recentActivity?.filter(activity => 
+                    activity.activityType === 'order' || activity.activityType === 'Order'
+                  )?.length || 0}
                 </div>
                 <p className="text-xs text-sky-800/80 dark:text-sky-200/80">
                   <span className="text-sky-700 dark:text-sky-300">+8%</span> from yesterday

@@ -28,6 +28,7 @@ import {
   PaginationPrevious,
 } from '@/components/ui/pagination'
 import { useGetOrders } from '@/hooks/queries/useGetOrders'
+import { useDeliverAndProcessNotes } from '@/hooks/mutations/useDeliverAndProcessNotes'
 import { showToast } from '@/lib/toast'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -43,6 +44,7 @@ const Orders: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined)
   // const lastFiltersRef = React.useRef<{ orderDate?: string; orderForDate?: string } | null>(null)
   const { data: ordersData, isLoading, error, refetch, isFetching } = useGetOrders({ orderDate, orderForDate })
+  const deliverAndProcessMutation = useDeliverAndProcessNotes()
 
 
   // Filter orders based on status
@@ -446,377 +448,26 @@ const Orders: React.FC = () => {
     }
   }
 
-  // Bulk print handler - print all orders in single popup
-  const handleBulkPrint = () => {
-    const deliveryOrders = filteredOrders.filter(order =>
-      ['company', 'agent'].includes(order.CustomerType) &&
-      ['Processed', 'Delivered'].includes(order.OrderStatus)
-    );
-
-    if (deliveryOrders.length === 0) {
-      alert('No Processed or Delivered orders found for Company or Agent customers.');
-      return;
-    }
-
-    // Generate combined print content for all orders
-    const combinedPrintContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>All Orders</title>
-        <style>
-          @page { 
-            size: A4; 
-            margin: 15mm; 
-          }
-          
-          * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-          }
-          
-          body { 
-            font-family: Arial, sans-serif; 
-            font-size: 12px; 
-            line-height: 1.3; 
-            color: #000;
-            background-color: #f5f5f5;
-          }
-          
-          .delivery-order {
-            background-color: #f5f5f5;
-            padding: 0;
-            margin: 0;
-            page-break-after: always;
-          }
-          
-          .delivery-order:last-child {
-            page-break-after: avoid;
-          }
-          
-          .main-container {
-            max-width: 100%;
-            margin: 0;
-            padding: 0;
-          }
-          
-          .header {
-            text-align: center;
-            margin-bottom: 25px;
-            background-color: #333;
-            color: white;
-            padding: 12px;
-          }
-          
-          .header h1 {
-            font-size: 18px;
-            font-weight: bold;
-            margin: 0;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color:#000;
-          }
-          
-          .section {
-            margin-bottom: 20px;
-            background-color: transparent;
-          }
-          
-          .section-title {
-            font-weight: bold;
-            font-size: 13px;
-            margin-bottom: 12px;
-            color: #000;
-            padding-bottom: 3px;
-          }
-          
-          .info-grid {
-            display: block;
-          }
-          
-          .info-row {
-            display: flex;
-            align-items: center;
-            margin-bottom: 8px;
-            min-height: 18px;
-          }
-          
-          .label {
-            font-weight: 500;
-            width: 160px;
-            flex-shrink: 0;
-            font-size: 12px;
-            color: #787878 !important;
-          }
-          
-          .colon {
-            margin: 0 8px;
-            font-weight: normal;
-          }
-          
-          .value {
-            flex: 1;
-            font-weight: normal;
-            border-bottom: 1px dashed #ACACAC;
-            min-height: 16px;
-            padding-bottom: 1px;
-          }
-          
-          .order-table {
-            width: 100%;
-            border: 1px solid #000;
-            margin: 10px 0;
-            background-color: white;
-            border-collapse: collapse;
-          }
-          
-          .order-table th {
-            background-color: #333;
-            color: white;
-            padding: 8px 6px;
-            text-align: center;
-            font-weight: bold;
-            font-size: 12px;
-            border: 1px solid #333;
-          }
-          
-          .order-table td {
-            padding: 8px 6px;
-            text-align: center;
-            border: 1px solid #333;
-            background-color: white;
-            font-size: 12px;
-          }
-          
-          .order-table td:first-child {
-            text-align: left;
-            font-weight: normal;
-          }
-          
-          .signature-section {
-            margin: 25px 0;
-          }
-          
-          .signature-row {
-            display: flex;
-            align-items: center;
-            margin-bottom: 15px;
-          }
-          
-          .signature-label {
-            width: 280px;
-            flex-shrink: 0;
-            font-size: 12px;
-            font-weight: normal;
-          }
-          
-          .signature-line {
-            flex: 1;
-            border-bottom: 1px dashed  #ACACAC;
-            height: 16px;
-            margin-left: 8px;
-          }
-          
-          .notes-section {
-            margin-top: 25px;
-          }
-          
-          .notes-title {
-            font-weight: bold;
-            font-size: 13px;
-            margin-bottom: 8px;
-            color:  #787878;
-            padding-bottom: 3px;
-          }
-          
-          .notes-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-          }
-          
-          .notes-list li {
-            margin-bottom: 4px;
-            font-size: 12px;
-            line-height: 1.3;
-            position: relative;
-            padding-left: 12px;
-            color: #787878;
-          }
-          
-          .notes-list li:before {
-            content: "•";
-            position: absolute;
-            left: 0;
-            font-weight: bold;
-          }
-          
-          @media print {
-            body { 
-              background-color: white;
-              margin: 0;
-              padding: 0;
-            }
-            
-            .delivery-order {
-              background-color: white;
-            }
-          }
-        </style>
-      </head>
-      <body>
-        ${deliveryOrders.map((order, index) => {
-          const deliveryOrderNumber = `DEL${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}${String(new Date().getDate()).padStart(2, '0')}${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}-${index + 1}`;
-          const label = order.OrderStatus === 'Processed' ? 'Kitchen' : 'Delivery'
-          
-          return `
-            <div class="delivery-order">
-              <div class="main-container">
-                <!-- Header -->
-                <div class="header">
-                  <h1>Catering ${label} Order</h1>
-                </div>
-                
-                <!-- Order Information Section -->
-                <div class="section">
-                  <div class="section-title">Order Info</div>
-                  <div class="info-grid">
-                    <div class="info-row">
-                      <span class="label">${label} Order No</span>
-                      <span class="colon">:</span>
-                      <span class="value">${deliveryOrderNumber}</span>
-                    </div>
-                    <div class="info-row">
-                      <span class="label">Date</span>
-                      <span class="colon">:</span>
-                      <span class="value">${order.OrderDate || new Date().toLocaleDateString('en-GB')}</span>
-                    </div>
-                    <div class="info-row">
-                      <span class="label">${label} Time</span>
-                      <span class="colon">:</span>
-                      <span class="value">_________________</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <!-- Customer Information Section -->
-                <div class="section">
-                  <div class="section-title">Customer Info</div>
-                  <div class="info-grid">
-                    <div class="info-row">
-                      <span class="label">Client / Company Name</span>
-                      <span class="colon">:</span>
-                      <span class="value">${order.CustomerName}</span>
-                    </div>
-                    <div class="info-row">
-                      <span class="label">Contact Number</span>
-                      <span class="colon">:</span>
-                      <span class="value">${order.CustomerMobile || '_________________'}</span>
-                    </div>
-                    <div class="info-row">
-                      <span class="label">Customer Type</span>
-                      <span class="colon">:</span>
-                      <span class="value">${order.CustomerType}</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <!-- Order Details Section -->
-                <div class="section">
-                  <div class="section-title">Order Details</div>
-                  <table class="order-table">
-                    <thead>
-                      <tr>
-                        <th>Meal Type</th>
-                        <th>Quantity</th>
-                        <th>Veg</th>
-                        <th>Non Veg</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td>Breakfast</td>
-                        <td>${order.breakfastTotal || 0}</td>
-                        <td>${order.breakfastVeg || 0}</td>
-                        <td>${order.breakfastNonVeg || 0}</td>
-                      </tr>
-                      <tr>
-                        <td>Lunch</td>
-                        <td>${order.lunchTotal || 0}</td>
-                        <td>${order.lunchVeg || 0}</td>
-                        <td>${order.lunchNonVeg || 0}</td>
-                      </tr>
-                      <tr>
-                        <td>Dinner</td>
-                        <td>${order.dinnerTotal || 0}</td>
-                        <td>${order.dinnerVeg || 0}</td>
-                        <td>${order.dinnerNonVeg || 0}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-                
-                <!-- Signatures Section -->
-                <div class="signature-section">
-                  <div class="signature-row">
-                    <span class="signature-label">${label} By (Signature & Name)</span>
-                    <span class="colon">:</span>
-                    <span class="signature-line"></span>
-                  </div>
-                  <div class="signature-row">
-                    <span class="signature-label">Received By (Signature and Name, Company Name)</span>
-                    <span class="colon">:</span>
-                    <span class="signature-line"></span>
-                  </div>
-                </div>
-                
-                <!-- Notes Section -->
-                <div class="notes-section">
-                  <div class="notes-title">Notes</div>
-                  <ul class="notes-list">
-                    <li>Please Verify Quantity Upon ${label} Time</li>
-                    <li>Any discrepancy should be reported immediately</li>
-                    <li>Customer Type: ${order.CustomerType}</li>
-                    <li>${label} Date: ${order.OrderDate || new Date().toLocaleDateString('en-GB')}</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          `;
-        }).join('')}
-      </body>
-      </html>
-    `;
-
-    // Print using iframe approach to avoid background pages
-    const iframe = document.createElement('iframe');
-    iframe.style.position = 'absolute';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
-    iframe.style.border = 'none';
-    iframe.style.left = '-9999px';
+  // Process orders handler
+  const handleProcessOrders = async () => {
+    const today = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
     
-    document.body.appendChild(iframe);
-    
-    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-    if (iframeDoc) {
-      iframeDoc.open();
-      iframeDoc.write(combinedPrintContent);
-      iframeDoc.close();
+    try {
+      await deliverAndProcessMutation.mutateAsync({
+        orderDate: today,
+        orderFor: today,
+      });
       
-      // Wait for content to load then print
-      iframe.onload = () => {
-        iframe.contentWindow?.focus();
-        iframe.contentWindow?.print();
-        
-        // Remove iframe after printing
-        setTimeout(() => {
-          document.body.removeChild(iframe);
-        }, 1000);
-      };
+      showToast.success('Orders processed successfully!');
+      
+      // Refresh the orders list
+      await refetch();
+    } catch (error) {
+      console.error('Error processing orders:', error);
+      showToast.error('Failed to process orders. Please try again.');
     }
-  }
+  };
+
 
   // Summary totals based on the SAME filtered dataset powering the table
   const totals = React.useMemo(() => {
@@ -950,15 +601,21 @@ const Orders: React.FC = () => {
           <Button
             variant="outline"
             size="sm"
-            onClick={handleBulkPrint}
+            onClick={handleProcessOrders}
             className="bg-gradient-to-r from-purple-500 to-pink-600 text-white hover:from-purple-600 hover:to-pink-700 shadow-lg"
-            disabled={!filteredOrders.some(order => 
-              ['company', 'agent'].includes(order.CustomerType) && 
-              ['Processed', 'Delivered'].includes(order.OrderStatus)
-            )}
+            disabled={deliverAndProcessMutation.isPending}
           >
-            <Printer className="w-4 h-4 mr-2" />
-            Print All Orders
+            {deliverAndProcessMutation.isPending ? (
+              <>
+                <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Processing...
+              </>
+            ) : (
+              <>
+                <Printer className="w-4 h-4 mr-2" />
+                Process Invoice
+              </>
+            )}
           </Button>
         </div>
       </div>

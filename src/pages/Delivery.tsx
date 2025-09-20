@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import KitchenDetail from '@/pages/KitchenDetail'
 import { useGetOrderSummary } from '@/hooks/queries/useGetOrderSummary'
+import { useProcessDeliveryOrders } from '@/hooks/mutations/useProcessDeliveryOrders'
 import { showToast } from '@/lib/toast'
 import {
   AlertDialog,
@@ -23,6 +24,7 @@ import {
 
 const Delivery: React.FC = () => {
   const { data, refetch, isFetching } = useGetOrderSummary('Processed')
+  const processDeliveryMutation = useProcessDeliveryOrders()
   const rows = data?.data || []
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
@@ -48,12 +50,12 @@ const Delivery: React.FC = () => {
     try {
       const key = `${entryIso}|${orderForIso}`
       setProcessingKey(key)
-      const url = `https://munchbox-cugmarh6fcamdpd4.canadacentral-01.azurewebsites.net/api/deliverOrders?orderDate=${encodeURIComponent(entryIso)}&orderFor=${encodeURIComponent(orderForIso)}`
-      const res = await fetch(url, { method: 'POST', headers: { accept: 'text/plain' } })
-      if (!res.ok) {
-        const text = await res.text()
-        throw new Error(text || `Request failed with status ${res.status}`)
-      }
+      
+      await processDeliveryMutation.mutateAsync({
+        orderDate: entryIso,
+        orderFor: orderForIso,
+      })
+      
       showToast.success('Delivery Processed', `DO processed for ${display}`)
       refetch()
     } catch (e: any) {

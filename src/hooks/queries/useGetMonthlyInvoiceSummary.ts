@@ -1,9 +1,9 @@
 import { useQuery, UseQueryOptions } from '@tanstack/react-query';
 import { invoiceService } from '@/api/services';
-import { MonthlyInvoiceSummary, ApiResponse } from '@/types';
+import { MonthlyInvoiceResponse, ApiResponse } from '@/types';
 
 export const useGetMonthlyInvoiceSummary = (
-  options?: Omit<UseQueryOptions<ApiResponse<MonthlyInvoiceSummary[]>, Error>, 'queryKey' | 'queryFn'>
+  options?: Omit<UseQueryOptions<ApiResponse<MonthlyInvoiceResponse>, Error>, 'queryKey' | 'queryFn'>
 ) => {
   return useQuery({
     queryKey: ['monthlyInvoiceSummary'],

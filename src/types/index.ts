@@ -303,6 +303,59 @@ export interface MonthlyInvoiceSummary {
   DinnerTotal: number;
   TotalAmount: number;
   PayStatus: 'Pending' | 'Paid';
+  OrderAID: number;
+  OrderId: number;
+}
+
+export interface InvoiceDetail {
+  SL: number;
+  Barcode: string;
+  ItemCode: string;
+  ItemName: string;
+  UnitPrice: number;
+  Quantity: number;
+  Total: number;
+  VatValue: number;
+  VatId: number;
+  OrderAID: number;
+  OrderId: number;
+}
+
+export interface MonthlyInvoiceResponse {
+  headers: MonthlyInvoiceSummary[];
+  details: InvoiceDetail[];
+}
+
+// POST Invoice API Types
+export interface PostInvoiceHeader {
+  referenceNo: string;
+  prefix: string;
+  suffix: string;
+  lpoDate: string;
+  entryDate: string;
+  customerId: number;
+  invoiceAmount: number;
+  paymentCollectionXml: string;
+  taxPostingXml: string;
+  termsXml: string;
+  messagesXml: string;
+  otherChargesXml: string;
+}
+
+export interface PostInvoiceDetail {
+  sl: number;
+  barCode: string;
+  itemName: string;
+  unitPrice: number;
+  quantity: number;
+  total: number;
+  vatValue: number;
+  vatId: number;
+}
+
+export interface PostInvoiceRequest {
+  header: PostInvoiceHeader;
+  details: PostInvoiceDetail[];
 }
 
 // Kitchen Types
