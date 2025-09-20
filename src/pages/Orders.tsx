@@ -50,26 +50,18 @@ const Orders: React.FC = () => {
     const orders = ordersData?.data || []
     let filtered = orders
     
-    // Debug: Log the first order to see the structure
-    if (orders.length > 0) {
-      console.log('First order structure:', orders[0])
-      console.log('Available fields:', Object.keys(orders[0]))
-    }
-    
     // Apply status filter if selected
     if (statusFilter) {
       filtered = orders.filter((order: any) => order.OrderStatus === statusFilter)
     }
     
     // Sort by OrderID in descending order (newest first)
-    // Try different possible field names for OrderID
+    // Use the actual orderId field from the database
     return filtered.sort((a: any, b: any) => {
-      // Try different possible field names
-      const orderIdA = parseInt(a.OrderID || a.orderID || a.Id || a.id || a.OrderId || a.orderId) || 0
-      const orderIdB = parseInt(b.OrderID || b.orderID || b.Id || b.id || b.OrderId || b.orderId) || 0
+      const orderIdA = parseInt(a.orderId) || 0
+      const orderIdB = parseInt(b.orderId) || 0
       
-      console.log(`Comparing OrderIDs: ${orderIdA} vs ${orderIdB}`)
-      return orderIdB - orderIdA // Descending order
+      return orderIdB - orderIdA // Descending order (newest first)
     })
   }, [ordersData?.data, statusFilter])
 
@@ -257,7 +249,7 @@ const Orders: React.FC = () => {
               {currentOrders.map((order, index) => (
                 <TableRow key={`${order.OrderAID ?? 'aid'}-${order.orderId ?? 'oid'}-${startIndex + index}`} className="hover:bg-gray-50 border-b border-gray-100">
                   <TableCell className="py-4 px-4 w-[80px]">
-                    <span className="font-medium text-blue-600 text-sm">{startIndex + index + 1}</span>
+                    <span className="font-medium text-blue-600 text-sm">{order.orderId}</span>
                   </TableCell>
                   <TableCell className="py-4 px-4 w-[200px]">
                     <div className="space-y-1">
