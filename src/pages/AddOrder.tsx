@@ -208,14 +208,10 @@ const AddOrder: React.FC = () => {
 
   return (
     <div className="h-screen overflow-hidden bg-gray-50">
-      <div className="container mx-auto px-4 py-6 max-w-7xl h-full flex flex-col">
-        {/* Header with Action Buttons */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Create New Order</h1>
-            </div>
-            
+      <div className="container mx-auto px-4 py-4 max-w-7xl h-full flex flex-col">
+        {/* Action Buttons Header */}
+        <div className="mb-4">
+          <div className="flex items-center justify-end">
             {/* Action Buttons - Moved to header */}
             {orders.length > 0 && (
               <div className="flex gap-3">
@@ -339,7 +335,7 @@ const AddOrder: React.FC = () => {
         )}
 
         {/* Main 2-Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-0">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1 min-h-0">
           {/* Left Column - Order Form */}
           <div className="h-full min-h-0 flex flex-col">
             <CompactOrderForm

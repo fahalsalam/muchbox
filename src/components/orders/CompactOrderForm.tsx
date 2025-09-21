@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState, useMemo } from 'react'
-import { CalendarIcon, Plus, Search, X, User, Clock, Shield, UserCheck, Lock } from 'lucide-react'
+import { Plus, Search, X, User, Clock, Shield, UserCheck, Lock } from 'lucide-react'
 import { format } from 'date-fns'
 import { useGetCompanyCustomers } from '@/hooks/queries/useGetCompanyCustomers'
 import { useGetAgentCustomers } from '@/hooks/queries/useGetAgentCustomers'
@@ -14,13 +14,8 @@ import { ApiCompanyCustomer, ApiAgentCustomer } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Calendar } from '@/components/ui/calendar'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
+import { Card, CardContent } from '@/components/ui/card'
+// Removed unused imports - Calendar and Popover components
 // Removed global preference selector; per-meal preferences will be captured instead
 import { Badge } from '@/components/ui/badge'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
@@ -109,7 +104,7 @@ interface CompactOrderFormProps {
   resetKey?: number
 }
 
-export function CompactOrderForm({ onAddOrder, onDateChange, orderForDate, editingOrder = null, resetKey }: CompactOrderFormProps) {
+export function CompactOrderForm({ onAddOrder, editingOrder = null, resetKey }: CompactOrderFormProps) {
   const [selectedCustomer, setSelectedCustomer] = useState<ApiCompanyCustomer | ApiAgentCustomer | null>(null)
   const [customerSearch, setCustomerSearch] = useState('')
   const [customerType, setCustomerType] = useState<'company' | 'agent'>('company')
@@ -123,7 +118,7 @@ export function CompactOrderForm({ onAddOrder, onDateChange, orderForDate, editi
     dinnerNonVeg: 0,
   })
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false)
-  const [showDatePicker, setShowDatePicker] = useState(false)
+  // Removed showDatePicker state - now handled in main header
   const [currentTime, setCurrentTime] = useState(new Date()) // Live time state
   const searchInputRef = useRef<HTMLInputElement | null>(null)
 
@@ -432,53 +427,8 @@ export function CompactOrderForm({ onAddOrder, onDateChange, orderForDate, editi
 
   return (
     <Card className="h-full overflow-hidden flex flex-col relative">
-      <CardHeader className="pb-3 flex-shrink-0">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold">Add New Order</CardTitle>
-          <div className="flex items-center gap-3 text-sm text-gray-600">
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4" />
-              <span>Entry: {format(new Date(), 'dd/MM/yyyy')}</span>
-            </div>
-            <span className="text-gray-300">|</span>
-            <div className="flex items-center gap-2">
-              <CalendarIcon className="h-4 w-4 text-gray-500" />
-              <span className="font-medium">Order For:</span>
-              <Popover open={showDatePicker && orderLogic.permissions.canEditOrderDate} onOpenChange={setShowDatePicker}>
-                <PopoverTrigger asChild>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="h-8"
-                    disabled={!orderLogic.permissions.canEditOrderDate}
-                  >
-                    {format(orderForDate, 'dd/MM/yyyy')}
-                    {!orderLogic.permissions.canEditOrderDate && (
-                      <Lock className="ml-1 h-3 w-3 text-gray-400" />
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="end">
-                  <Calendar
-                    mode="single"
-                    selected={orderForDate}
-                    onSelect={(date) => {
-                      if (date) {
-                        onDateChange(date)
-                        setShowDatePicker(false)
-                      }
-                    }}
-                    disabled={(date) => date < new Date()}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-          </div>
-        </div>
-      </CardHeader>
       
-      <CardContent className="flex-1 overflow-y-auto space-y-4">
+      <CardContent className="flex-1 overflow-y-auto space-y-4 p-6">
         
         {/* Order Creation Logic Indicators */}
         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
@@ -526,7 +476,7 @@ export function CompactOrderForm({ onAddOrder, onDateChange, orderForDate, editi
               
               {orderLogic.permissions.canEditOrderDate ? (
                 <div className="flex items-center gap-2 text-xs text-blue-600">
-                  <CalendarIcon className="h-3 w-3" />
+                  <Clock className="h-3 w-3" />
                   <span>Delivery date is editable</span>
                 </div>
               ) : (

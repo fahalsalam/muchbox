@@ -1,10 +1,12 @@
 "use client"
 
-import { Edit, Trash2, ShoppingCart, User, Phone, Utensils } from 'lucide-react'
+import { Edit, Trash2, ShoppingCart, User, Phone, Utensils, Clock, Shield, UserCheck, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { format } from 'date-fns'
+import { AppSettings } from '@/types'
 
 interface OrderData {
   customerId: string
@@ -27,9 +29,30 @@ interface CompactOrderSummaryProps {
   orders: OrderData[]
   onEditOrder: (index: number, order: OrderData) => void
   onDeleteOrder: (index: number) => void
+  // Summary card props
+  userName?: string
+  userRole?: string
+  currentTime: Date
+  settings: AppSettings
+  orderLogic: {
+    permissions: {
+      canPlaceOrder: boolean
+      canEditOrderDate: boolean
+    }
+    explanation: string
+  }
 }
 
-export function CompactOrderSummary({ orders, onEditOrder, onDeleteOrder }: CompactOrderSummaryProps) {
+export function CompactOrderSummary({ 
+  orders, 
+  onEditOrder, 
+  onDeleteOrder, 
+  userName, 
+  userRole, 
+  currentTime, 
+  settings, 
+  orderLogic 
+}: CompactOrderSummaryProps) {
 
   const totalMeals = orders.reduce((sum, order) => sum + order.breakfast + order.lunch + order.dinner, 0)
 
@@ -63,6 +86,62 @@ export function CompactOrderSummary({ orders, onEditOrder, onDeleteOrder }: Comp
         </div>
         <div className="absolute top-2 right-2 h-6 w-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center shadow">
           {orders.length}
+        </div>
+
+        {/* Admin Summary Card */}
+        <div className="mt-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-700 rounded-lg border border-blue-200 dark:border-gray-600">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              {userRole === 'Admin' && <Shield className="h-4 w-4 text-purple-600" />}
+              {userRole === 'Privileged' && <UserCheck className="h-4 w-4 text-blue-600" />}
+              {userRole !== 'Admin' && userRole !== 'Privileged' && <User className="h-4 w-4 text-gray-600" />}
+              <span className="text-sm font-medium">
+                {userName || 'Loading...'} ({userRole || 'Loading...'})
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-gray-600">
+              <Clock className="h-3 w-3 animate-pulse text-blue-500" />
+              <span className="font-mono">{format(currentTime, 'h:mm a')}</span>
+            </div>
+          </div>
+
+          {/* Cut-off Times */}
+          <div className="grid grid-cols-2 gap-3 text-xs">
+            <div className="flex items-center justify-between bg-white/50 dark:bg-gray-800/50 rounded px-2 py-1">
+              <span className="text-gray-600">Morning Window:</span>
+              <span className="font-mono font-medium text-blue-700">
+                {settings.morningWindowEnd ? format(new Date(`2000-01-01T${settings.morningWindowEnd}:00`), 'h:mm a') : '2:30 PM'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between bg-white/50 dark:bg-gray-800/50 rounded px-2 py-1">
+              <span className="text-gray-600">Night Cut-off:</span>
+              <span className="font-mono font-medium text-red-700">
+                {settings.nightCutOffTime ? format(new Date(`2000-01-01T${settings.nightCutOffTime}:00`), 'h:mm a') : '10:00 PM'}
+              </span>
+            </div>
+          </div>
+
+          {/* Order Permissions & Explanation */}
+          <div className="space-y-2 mt-3">
+            {orderLogic.permissions.canPlaceOrder && (
+              <div className="flex items-center gap-2 p-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded text-sm">
+                <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0"></div>
+                <span className="text-green-700 dark:text-green-300">{orderLogic.explanation}</span>
+              </div>
+            )}
+            
+            {orderLogic.permissions.canEditOrderDate ? (
+              <div className="flex items-center gap-2 text-xs text-blue-600">
+                <Clock className="h-3 w-3" />
+                <span>Delivery date is editable</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                <Lock className="h-3 w-3" />
+                <span>Delivery date is locked</span>
+              </div>
+            )}
+          </div>
         </div>
       </CardHeader>
       

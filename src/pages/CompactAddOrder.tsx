@@ -119,16 +119,12 @@ const CompactAddOrder: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-6 max-w-7xl">
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Create New Order</h1>
-          <p className="text-gray-600">Manage customer orders efficiently</p>
-        </div>
+      <div className="container mx-auto px-4 py-4 max-w-7xl">
+        {/* Removed header to save space */}
 
         {/* Quick Stats */}
         {orders.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <Card className="border-0 shadow-sm bg-gradient-to-r from-blue-50 to-blue-100">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
@@ -179,7 +175,7 @@ const CompactAddOrder: React.FC = () => {
         )}
 
         {/* Main 2-Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[calc(100vh-300px)]">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-[calc(100vh-250px)]">
           {/* Left Column - Order Form */}
           <div className="h-full">
             <CompactOrderForm

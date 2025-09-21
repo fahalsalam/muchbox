@@ -17,6 +17,9 @@ import {
   Truck,
   Receipt,
   UtensilsCrossed,
+  Clock,
+  CalendarIcon,
+  Edit3,
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -37,6 +40,10 @@ import { useGetOrders } from '@/hooks/queries/useGetOrders'
 import { useMemo } from 'react'
 import ModeToggle from '@/components/ModeToggle'
 import { SettingsModal } from '@/components/modals/SettingsModal'
+import { useHeaderConfig } from '@/hooks/useHeaderConfig'
+import { format } from 'date-fns'
+import { Calendar } from '@/components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
 interface MainLayoutProps {
   children: React.ReactNode
@@ -106,8 +113,31 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, onLogout }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [expandedItems, setExpandedItems] = useState<string[]>([])
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [orderForDate, setOrderForDate] = useState<Date>(new Date(Date.now() + 24 * 60 * 60 * 1000)) // Tomorrow
+  const [desktopDatePickerOpen, setDesktopDatePickerOpen] = useState(false)
+  const [mobileDatePickerOpen, setMobileDatePickerOpen] = useState(false)
+  const headerConfig = useHeaderConfig()
   // Removed unused local filters (managed in pages)
   const location = useLocation()
+
+  // Ensure only one date picker is open at a time
+  React.useEffect(() => {
+    if (desktopDatePickerOpen && mobileDatePickerOpen) {
+      setMobileDatePickerOpen(false)
+    }
+  }, [desktopDatePickerOpen, mobileDatePickerOpen])
+
+  // Close date pickers when navigating away from order pages
+  React.useEffect(() => {
+    const isOrderPage = location.pathname.startsWith('/add-order') || 
+                       location.pathname.startsWith('/compact-add-order') || 
+                       location.pathname.startsWith('/modern-add-order')
+    
+    if (!isOrderPage) {
+      setDesktopDatePickerOpen(false)
+      setMobileDatePickerOpen(false)
+    }
+  }, [location.pathname])
 
   const isOrdersPage = location.pathname.startsWith('/orders')
 
@@ -267,26 +297,202 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, onLogout }) => {
                   <Menu className="h-4 w-4" />
                 </Button>
                 
-                {/* Search */}
+                {/* Dynamic Page Title - Desktop */}
+                {headerConfig.title && (
+                  <div className="hidden md:block">
+                    {headerConfig.orderDetails ? (
+                      /* Professional single line layout for order pages */
+                      <div className="flex items-center gap-6">
+                        <div className="flex items-center gap-2">
+                          <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
+                          <h1 className="text-xl font-bold text-gray-900 tracking-tight">{headerConfig.title}</h1>
+                        </div>
+                        <div className="flex items-center gap-4 text-sm">
+                          <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-200">
+                            <Clock className="h-4 w-4 text-blue-600" />
+                            <span className="text-gray-700 font-medium">Entry: {headerConfig.orderDetails.entryDate}</span>
+                          </div>
+                          <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 rounded-lg border border-blue-200">
+                            <CalendarIcon className="h-4 w-4 text-blue-600" />
+                            {headerConfig.orderDetails.canEditOrderDate ? (
+                              <Popover open={desktopDatePickerOpen} onOpenChange={setDesktopDatePickerOpen}>
+                                <PopoverTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    className="h-auto p-0 text-blue-800 font-semibold hover:text-blue-900 hover:bg-transparent cursor-pointer underline decoration-dotted underline-offset-2 hover:decoration-solid flex items-center gap-1"
+                                    onClick={(e) => {
+                                      e.preventDefault()
+                                      e.stopPropagation()
+                                      setDesktopDatePickerOpen(true)
+                                      setMobileDatePickerOpen(false) // Ensure mobile is closed
+                                    }}
+                                  >
+                                    Order For: {format(orderForDate, 'dd/MM/yyyy')}
+                                    <Edit3 className="h-3 w-3 opacity-60" />
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent 
+                                  className="w-auto p-0 z-[9999] bg-white shadow-lg border rounded-md" 
+                                  align="start"
+                                  side="bottom"
+                                  sideOffset={5}
+                                  onOpenAutoFocus={(e) => e.preventDefault()}
+                                  avoidCollisions={true}
+                                  collisionPadding={10}
+                                >
+                                  <Calendar
+                                    mode="single"
+                                    selected={orderForDate}
+                                    onSelect={(date) => {
+                                      if (date) {
+                                        setOrderForDate(date)
+                                        setDesktopDatePickerOpen(false)
+                                      }
+                                    }}
+                                    disabled={(date) => date < new Date()}
+                                    initialFocus
+                                  />
+                                </PopoverContent>
+                              </Popover>
+                            ) : (
+                              <span className="text-blue-800 font-semibold">Order For: {format(orderForDate, 'dd/MM/yyyy')}</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Professional layout for other pages */
+                      <div className="flex items-center gap-2">
+                        <div className="h-2 w-2 bg-gray-400 rounded-full"></div>
+                        <h1 className="text-xl font-bold text-gray-900 tracking-tight">{headerConfig.title}</h1>
+                        {headerConfig.subtitle && (
+                          <span className="text-sm text-gray-500 font-normal">• {headerConfig.subtitle}</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Dynamic Page Title - Mobile */}
+                {headerConfig.title && (
+                  <div className="md:hidden">
+                    {headerConfig.orderDetails ? (
+                      /* Mobile layout for order pages */
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <div className="h-1.5 w-1.5 bg-blue-500 rounded-full"></div>
+                          <h1 className="text-lg font-bold text-gray-900">{headerConfig.title}</h1>
+                        </div>
+                        <div className="flex flex-col gap-2 text-xs">
+                          <div className="flex items-center gap-2 px-2 py-1 bg-gray-50 rounded-md">
+                            <Clock className="h-3 w-3 text-blue-600" />
+                            <span className="text-gray-700 font-medium">Entry: {headerConfig.orderDetails.entryDate}</span>
+                          </div>
+                          <div className="flex items-center gap-2 px-2 py-1 bg-blue-50 rounded-md">
+                            <CalendarIcon className="h-3 w-3 text-blue-600" />
+                            {headerConfig.orderDetails.canEditOrderDate ? (
+                              <Popover open={mobileDatePickerOpen} onOpenChange={setMobileDatePickerOpen}>
+                                <PopoverTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    className="h-auto p-0 text-blue-800 font-semibold hover:text-blue-900 hover:bg-transparent text-xs cursor-pointer underline decoration-dotted underline-offset-2 hover:decoration-solid flex items-center gap-1"
+                                    onClick={(e) => {
+                                      e.preventDefault()
+                                      e.stopPropagation()
+                                      setMobileDatePickerOpen(true)
+                                      setDesktopDatePickerOpen(false) // Ensure desktop is closed
+                                    }}
+                                  >
+                                    Order For: {format(orderForDate, 'dd/MM/yyyy')}
+                                    <Edit3 className="h-2.5 w-2.5 opacity-60" />
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent 
+                                  className="w-auto p-0 z-[9999] bg-white shadow-lg border rounded-md" 
+                                  align="start"
+                                  side="bottom"
+                                  sideOffset={5}
+                                  onOpenAutoFocus={(e) => e.preventDefault()}
+                                  avoidCollisions={true}
+                                  collisionPadding={10}
+                                >
+                                  <Calendar
+                                    mode="single"
+                                    selected={orderForDate}
+                                    onSelect={(date) => {
+                                      if (date) {
+                                        setOrderForDate(date)
+                                        setMobileDatePickerOpen(false)
+                                      }
+                                    }}
+                                    disabled={(date) => date < new Date()}
+                                    initialFocus
+                                  />
+                                </PopoverContent>
+                              </Popover>
+                            ) : (
+                              <span className="text-blue-800 font-semibold text-xs">Order For: {format(orderForDate, 'dd/MM/yyyy')}</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Mobile layout for other pages */
+                      <div className="flex items-center gap-2">
+                        <div className="h-1.5 w-1.5 bg-gray-400 rounded-full"></div>
+                        <h1 className="text-lg font-bold text-gray-900">{headerConfig.title}</h1>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {/* Dynamic Search */}
+                {headerConfig.searchPlaceholder && (
                 <div className="hidden md:flex items-center space-x-2">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
-                      placeholder="Search orders, customers..."
+                        placeholder={headerConfig.searchPlaceholder}
                       className="pl-10 w-64"
                     />
                   </div>
                 </div>
+                )}
               </div>
 
               <div className="flex items-center space-x-4">
-                {/* Notifications */}
+                {/* Quick Actions */}
+                {headerConfig.quickActions && headerConfig.quickActions.length > 0 && (
+                  <>
+                    <div className="hidden md:flex items-center space-x-2">
+                      {headerConfig.quickActions.map((action, index) => (
+                        <Button
+                          key={index}
+                          variant="outline"
+                          size="sm"
+                          onClick={action.action}
+                          className="flex items-center gap-2"
+                        >
+                          <action.icon className="h-4 w-4" />
+                          <span>{action.label}</span>
+                        </Button>
+                      ))}
+                    </div>
+                    <Separator orientation="vertical" className="h-6" />
+                  </>
+                )}
+                
+                {/* Dynamic Notifications */}
+                {headerConfig.showNotifications && (
                 <Button variant="ghost" size="icon" className="relative">
                   <Bell className="h-4 w-4" />
+                    {headerConfig.notificationCount && headerConfig.notificationCount > 0 && (
                   <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 text-xs flex items-center justify-center p-0">
-                    3
+                        {headerConfig.notificationCount}
                   </Badge>
+                    )}
                 </Button>
+                )}
 
                 <Separator orientation="vertical" className="h-6" />
 

@@ -1,8 +1,7 @@
 "use client"
 
 import { useState } from 'react'
-import { CalendarIcon, Plus, Search, X, User, Clock, Utensils, CheckCircle2 } from 'lucide-react'
-import { format } from 'date-fns'
+import { Plus, Search, X, User, Utensils, CheckCircle2 } from 'lucide-react'
 import { useGetIndividualCustomers } from '@/hooks/queries/useGetIndividualCustomers'
 import { showToast } from '@/lib/toast'
 import { ApiIndividualCustomer } from '@/types'
@@ -12,12 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Calendar } from '@/components/ui/calendar'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
+// Removed unused imports - Calendar and Popover components
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
@@ -38,7 +32,7 @@ interface ModernOrderFormProps {
   orderForDate: Date
 }
 
-export function ModernOrderForm({ onAddOrder, onDateChange, orderForDate }: ModernOrderFormProps) {
+export function ModernOrderForm({ onAddOrder }: ModernOrderFormProps) {
   const [selectedCustomer, setSelectedCustomer] = useState<ApiIndividualCustomer | null>(null)
   const [customerSearch, setCustomerSearch] = useState('')
   const [preference, setPreference] = useState<'veg' | 'non-veg' | 'none'>('none')
@@ -48,7 +42,7 @@ export function ModernOrderForm({ onAddOrder, onDateChange, orderForDate }: Mode
     dinner: 0,
   })
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false)
-  const [showDatePicker, setShowDatePicker] = useState(false)
+  // Removed showDatePicker state - now handled in main header
 
   const { data: customersData, isLoading: customersLoading } = useGetIndividualCustomers()
 
@@ -110,43 +104,6 @@ export function ModernOrderForm({ onAddOrder, onDateChange, orderForDate }: Mode
 
   return (
     <div className="space-y-6">
-      {/* Header with Date Selection */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Create New Order</h2>
-          <p className="text-gray-600 mt-1">Select customer and add meal quantities</p>
-        </div>
-        
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <Clock className="h-4 w-4" />
-            <span>Entry: {format(new Date(), 'dd/MM/yyyy')}</span>
-          </div>
-          
-          <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="bg-white hover:bg-gray-50">
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                Order for: {format(orderForDate, 'dd/MM/yyyy')}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
-              <Calendar
-                mode="single"
-                selected={orderForDate}
-                onSelect={(date) => {
-                  if (date) {
-                    onDateChange(date)
-                    setShowDatePicker(false)
-                  }
-                }}
-                disabled={(date) => date < new Date()}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
-        </div>
-      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left Column - Customer & Preference */}
